@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.claude/worktrees
+.env
+.env.local
+*.log

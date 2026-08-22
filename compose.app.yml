@@ -1,0 +1,49 @@
+# Running the app locally in Docker: `npm run app:up`.
+#
+# Kept separate from docker-compose.yml on purpose. That file is the *test*
+# database — tmpfs-backed and disposable, because every test run rebuilds the
+# schema from the migrations. This one wants data that survives a restart, so
+# it gets its own volume and its own port. Sharing one database would mean a
+# test run silently wiping whatever you had been looking at.
+services:
+  app:
+    build: .
+    ports:
+      # 3100, not 3000 — 3000 is commonly already taken by another dev server.
+      - "3100:3000"
+    environment:
+      # The app talks to `db` by service name, not localhost — inside the
+      # network the host's port mapping does not exist.
+      DATABASE_URL: postgresql://postgres:yaongi@db:5432/postgres
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env.local}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-not-configured}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-not-configured}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3100/auth/callback}
+    volumes:
+      # Source mounted for live reload; the two anonymous volumes keep the
+      # container's own node_modules and .next from being shadowed by the
+      # host's — see the note about sharp in the Dockerfile.
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: supabase/postgres:15.8.1.060
+    environment:
+      POSTGRES_PASSWORD: yaongi
+    ports:
+      # 54330, not the test database's 54329 — both can run at once.
+      - "54330:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 45
+    volumes:
+      - yaongi_dev_db:/var/lib/postgresql/data
+
+volumes:
+  yaongi_dev_db:
