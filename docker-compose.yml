@@ -1,0 +1,27 @@
+# Integration tests run against a real Postgres, never a mocked Supabase.
+#
+# RLS policies, pgroonga's Korean tokenization and the Entry triggers *are*
+# the behaviour under test, and all three are invisible to a mock.
+#
+# The image is Supabase's own, not a plain postgres — it carries both
+# extensions the app depends on at the versions production runs:
+#   - pgroonga, because to_tsvector silently fails on Korean (ADR-0003):
+#     searching 제주 never matches 제주도에서, and it ships looking fine.
+#   - pgvector, for the embedding column the Entry index carries.
+# Testing against a database that lacks them would prove nothing.
+services:
+  db:
+    image: supabase/postgres:15.8.1.060
+    environment:
+      POSTGRES_PASSWORD: yaongi
+      POSTGRES_DB: yaongispace_test
+    ports:
+      - "54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d yaongispace_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 45
+    tmpfs:
+      # Tests only — the database is disposable, so keep it off disk and fast.
+      - /var/lib/postgresql/data

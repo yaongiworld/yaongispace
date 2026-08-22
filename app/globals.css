@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Soft Clay — the Yaongispace theme.
+   Light only, by decision: no dark mode anywhere (ticket 006).
+   Tokens lifted from prototypes/soft-clay.html so the built app and the
+   prototype cannot drift apart. */
+@theme {
+  /* The warm peach → pink → lilac ground */
+  --color-clay-dawn: #fff4e9;
+  --color-clay-blush: #ffe9f0;
+  --color-clay-dusk: #eef1ff;
+
+  /* Accents, warmest to coolest */
+  --color-clay-apricot: #ffdcc9;
+  --color-clay-rose: #ffc9dd;
+  --color-clay-lilac: #f0d5ff;
+
+  /* Ink — warm brown, never black */
+  --color-clay-ink: #4a3b33;
+  --color-clay-ink-soft: #a2938a;
+
+  /* The one saturated accent, used sparingly */
+  --color-clay-berry: #ff5c8a;
+
+  /* Puffy white cards */
+  --color-clay-card: rgb(255 255 255 / 0.88);
+  --color-clay-card-quiet: rgb(255 255 255 / 0.8);
+
+  /* Radii: puffy, 24–34px on cards, 99px on pills */
+  --radius-clay-sm: 16px;
+  --radius-clay: 24px;
+  --radius-clay-lg: 34px;
+  --radius-clay-pill: 99px;
+
+  /* Soft, warm-tinted shadows — never neutral grey */
+  --shadow-clay: 0 8px 18px rgb(190 140 120 / 0.15),
+    inset 0 -3px 0 rgb(190 140 120 / 0.06);
+  --shadow-clay-lift: 0 14px 30px rgb(230 150 160 / 0.3),
+    inset 0 -4px 0 rgb(255 255 255 / 0.4);
+
+  --font-sans: var(--font-pretendard), system-ui, sans-serif;
+  --font-display: var(--font-jua), var(--font-fredoka), system-ui, sans-serif;
+  --font-display-latin: var(--font-fredoka), system-ui, sans-serif;
+}
+
+:root {
+  /* Light only. Declared so the browser never renders form controls,
+     scrollbars or the address bar in a dark scheme. */
+  color-scheme: light;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: linear-gradient(
+      178deg,
+      var(--color-clay-dawn) 0%,
+      var(--color-clay-blush) 50%,
+      var(--color-clay-dusk) 100%
+    )
+    fixed;
+  color: var(--color-clay-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
