@@ -26,15 +26,20 @@ session; take the first unblocked, unclaimed one unless told otherwise.
 
 - **Sections in scope**: home, letters, photos, world map, calendar, knowledge base +
   chat agent.
-- **Out of scope this iteration**: SNS/relationships, finance, voice auth.
+- **Out of scope this iteration**: SNS/relationships, finance, voice auth, the Google
+  Photos API, Google Calendar sync.
 - **Auth**: Google OAuth is primary. Voice ("Yaongichu!") is a future ritual layer, and
   when built it sits *on top of* real auth — never as the lock.
 - **Stack**: Next.js 15 + React 19 + Tailwind 4 + TypeScript + Supabase, on Vercel.
   Matches `../llc/dashboard`; familiarity beats novelty for something meant to last.
 - **Theme**: bubbly and fun, cats and zzingni. 3D is confined to the home page for now.
 - **Photos are imported, not synced** — Google killed the library-read scopes in 2025.
-- **Two OAuth postures**: calendar needs verification to escape 7-day token expiry;
-  photos must stay unverified to avoid a $500–$75k/yr CASA assessment.
+  They arrive by PWA share target and scheduled Takeout. **The Photos API is not used.**
+- **Google is sign-in only** (`email`/`profile`). No sensitive or restricted scopes
+  anywhere, so no verification, no CASA, no 7-day token expiry. Google Calendar sync is
+  deferred; Events are native to Yaongispace.
+- **Identity is a Person**, not a Google account — a Google account is a credential
+  attached to a Person. Losing it must never mean losing data.
 - **Domain model**: entities are Person, Letter, Photo, Place, Visit, Journey, Event,
   Note, unified by a derived **Entry** index that makes recall possible. `occurred_at`
   (when it happened) is the primary time axis, not `created_at`. A wished-for

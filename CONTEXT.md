@@ -54,8 +54,9 @@ later, rather than inferred from scattered dates.
 _Avoid_: Trip, vacation, holiday, collection, album
 
 **Event**:
-Something on our shared calendar. Lives in one dedicated shared Google Calendar that we
-both have edit rights to, and is mirrored here.
+Something on our shared calendar — an anniversary, a trip, a thing to look forward to.
+Native to Yaongispace: ours, not a mirror of Google Calendar. If Google sync is added
+later it becomes a mirror onto Events we already own, never the other way round.
 _Avoid_: Appointment, meeting, calendar item
 
 **Note**:
@@ -66,9 +67,17 @@ _Avoid_: Document, page, entry (Entry means the shared index), memo, KB article
 
 **Person**:
 One of us. Exactly two, and deliberately thin — an identity a Letter can be addressed
-to or a Photo can be about. Carries no contact details, no relationship history, and no
-last-contacted tracking; that is the SNS work, which is out of scope.
+to or a Photo can be about. **Everything belongs to a Person, never to a Google
+account**; a Google account is only a Credential attached to one. Carries no contact
+details, no relationship history, and no last-contacted tracking; that is the SNS work,
+which is out of scope.
 _Avoid_: User, contact, member, account
+
+**Credential**:
+A way for a Person to sign in — currently a Google account, later perhaps an email link
+or the voice ritual. Attached to a Person and replaceable; losing one loses access, never
+data.
+_Avoid_: Login, identity, account
 
 ## Recall
 

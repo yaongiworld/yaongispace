@@ -4,7 +4,7 @@ title: How importing photos should feel
 label: wayfinder:grilling
 status: open
 assignee:
-blocked-by: [001, 003]
+blocked-by: [001, 003, 005]
 ---
 
 ## Question
@@ -15,9 +15,13 @@ load-bearing one — if importing is tedious, the library dies and the app's mos
 valuable section with it.
 
 Decide:
-- The primary path. Research recommends direct upload (share sheet / PWA file picker)
-  as the reliable spine, Picker API for occasional "add from Google Photos", Takeout
-  for bulk backfill. Confirm or revise.
+- **Settled by the auth ticket: the Picker API is dropped.** Photos arrive by two paths
+  only — a **PWA share target** (share from the phone's photo app, two taps) and
+  **scheduled Takeout** for backfill. No Google API is involved in either, which is why
+  the app now has no sensitive scopes at all. This ticket designs the *experience* of
+  those two paths, not which paths exist.
+- The share-target flow specifically: what the PWA manifest must declare, what happens
+  when 40 photos are shared at once, and what the user sees while it uploads.
 - What the routine looks like — after a trip, do you dump 300 photos at once? Does the
   app nudge you? Is importing an occasional ritual or a background chore?
 - The Takeout backfill: is the pre-app archive imported once at the start, and who does

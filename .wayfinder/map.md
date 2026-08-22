@@ -47,11 +47,11 @@ reads across. **No app code ships from this effort.**
   in Testing mode for photos forever.
 
 - [How does the calendar stay in sync with Google?](tickets/002-google-calendar-sync.md) —
-  Viable: one dedicated shared Google Calendar, Vercel Cron polling `events.list` with a
-  `syncToken`, full resync on 410, writes explicitly in `Asia/Seoul`. Skip push channels.
-  **But** Testing-mode refresh tokens expire after 7 days, so always-on sync *requires*
-  sensitive-scope verification (3–5 days, no CASA, achievable). Consequence: the app runs
-  **two OAuth postures** — calendar verified in Production, photos unverified in Testing.
+  Sync is technically viable (one shared Google Calendar, cron polling `events.list` with
+  a `syncToken`, full resync on 410, writes in `Asia/Seoul`, skip push channels) **but
+  requires sensitive-scope verification** to escape 7-day token expiry. *Superseded in
+  part*: Google Calendar sync was subsequently **deferred** — Events are native to
+  Yaongispace this iteration. These findings stand for whoever picks sync up later.
 
 - [The shared data model — what is a memory, a place, a letter?](tickets/003-shared-data-model.md) —
   Entities: Person, Letter, Photo, Place, Visit, Journey, Event, Note. Unified by a
@@ -75,6 +75,17 @@ reads across. **No app code ships from this effort.**
   trade against *privacy by default*, with a cheap exit. Reads photo captions, never
   images. Under $15/month.
 
+- [Google sign-in for exactly two people](tickets/005-auth-and-accounts.md) — **Google is
+  used for sign-in only** (`email`/`profile`, non-sensitive: no verification, no token
+  expiry). The Photos API is **dropped** and Google Calendar sync **deferred**, so the app
+  now has **no sensitive or restricted scopes at all** — one cheap Cloud project, one
+  consent screen, no 7-day fuse
+  ([ADR-0005](../docs/adr/0005-google-for-sign-in-only.md)). Identity is a **Person**;
+  a Google account is a credential attached to one, never the owner of data
+  ([ADR-0006](../docs/adr/0006-identity-is-a-person-not-a-google-account.md)). Two-account
+  allowlist (as data, not a constant) plus RLS. Sessions effectively never expire — the
+  phone's lock screen is the real boundary.
+
 ## Not yet specified
 
 <!-- in-scope fog: real questions not yet sharp enough to ticket -->
@@ -84,6 +95,11 @@ reads across. **No app code ships from this effort.**
   arrive by import — but wants the import experience settled first.
 - **Letters as an experience.** Whether letters are plain text or have paper/stamp/seal
   texture, whether they can be scheduled or sealed until a date. Wants a prototype.
+- **Google Calendar sync.** Deferred, not cancelled. The research in
+  [ticket 002](tickets/002-google-calendar-sync.md) still stands, and
+  [ticket 012](tickets/012-oauth-verification.md) holds the verification checklist.
+  Picking this up means accepting sensitive-scope verification. The data model is
+  designed so sync arrives as a mirror onto Events we already own.
 - **Offline behaviour.** How much works on a phone with no signal.
 - **Backup and export.** Concrete mechanism honouring *long-lived data* — how the two
   of you get everything out if Supabase or Vercel disappears.
@@ -98,6 +114,12 @@ reads across. **No app code ships from this effort.**
 - **Finance** — the financial situation dashboard, the assistant, and API-connected
   account syncing. Out for this iteration. Bank aggregation in Korea (Open Banking /
   MyData) is a regulated, licensed problem and needs its own effort entirely.
+- **The Google Photos API.** Automatic sync does not exist — Google removed the
+  library-read scopes on 2025-03-31, and the Picker API needs a human tapping a
+  Google-hosted UI each time, with URLs that expire in 60 minutes. Keeping the Picker
+  would have cost a second Cloud project and weekly re-consent for an occasional
+  convenience. Photos arrive by PWA share target and scheduled Takeout instead, touching
+  no Google API. Ruled out consciously, not overlooked.
 - **Voice authentication ("Yaongichu!")** — deferred to a future iteration. Research is
   already done and should not be repeated; see the closed research ticket for the
   findings brief. Bottom line for whoever picks this up: managed speaker verification
