@@ -68,12 +68,24 @@ comment on function news_window () is
 -- `occurred_at` spans four years, which under occurred-at ordering buries the
 -- feed in 2022.
 --
--- So the axis is `created_at` — with exactly one adjustment, for the sealed
--- Letter. A Letter sealed until 2036 was *created* today, and its news fires
--- on its unseal date, not now. `greatest(created_at, unseal_at)` is that rule,
--- and it is a `greatest` rather than a `coalesce` so an already-unsealed
--- letter is unaffected: a letter sealed until yesterday is news today, from
--- the moment it arrived.
+-- So the axis is `created_at` — but **the source row's, never the Entry's**,
+-- and that distinction is the subtlest thing in this file.
+--
+-- `entry.created_at` looks like the obvious column and it is a trap. An Entry
+-- is derived: `rebuild_entry_index()` deletes every row and re-inserts it, and
+-- `entry.created_at` defaults to `now()`, so after a repair every Entry in the
+-- archive claims to have been created at the moment of the repair. Ordering
+-- News by it would mean a rebuild silently re-dates four years of history into
+-- today's feed — the exact "a repair undoes your dismissals" failure ADR-0015
+-- stores the seen marker to prevent, arriving by a second road the ADR does
+-- not mention. The source row's `created_at` is the durable one: nothing
+-- rewrites `letter.created_at`, and a rebuild does not touch it.
+--
+-- Then one adjustment, for the sealed Letter. A Letter sealed until 2036 was
+-- *created* today, and its news fires on its unseal date, not now.
+-- `greatest(created_at, unseal_at)` is that rule, and it is a `greatest`
+-- rather than a `coalesce` so an already-unsealed letter is unaffected: a
+-- letter sealed until yesterday is news today, from the moment it arrived.
 --
 -- `unseal_at` lives on `letter`, not on `entry` — the index carries no seal,
 -- because 003 hides a sealed letter's Entry through `entry_readable` rather
@@ -81,21 +93,32 @@ comment on function news_window () is
 -- different jobs: RLS makes a sealed letter *invisible*, and this makes an
 -- unsealed one *sort where it belongs*. Without this a letter sealed for ten
 -- years would appear in ten years at the very bottom of the feed, dated today.
+--
+-- A kind with no source `created_at` to read falls back to the Entry's own,
+-- which is the honest answer for something the index is the only record of.
+-- Every kind in the schema today has one; the `coalesce` is what keeps a
+-- future kind from vanishing from the feed rather than merely sorting oddly.
 create function news_arrived_at(p_kind text, p_source_id uuid, p_created_at timestamptz)
 returns timestamptz
 language sql
 stable
 as $$
-  select case
-           when p_kind <> 'letter' then p_created_at
-           else greatest(
-             p_created_at,
-             coalesce(
-               (select l.unseal_at from letter l where l.id = p_source_id),
-               p_created_at
-             )
-           )
-         end;
+  select coalesce(
+    case p_kind
+      when 'letter' then (
+        -- The seal moves a Letter's arrival forward to its unseal date.
+        select greatest(l.created_at, coalesce(l.unseal_at, l.created_at))
+          from letter l where l.id = p_source_id
+      )
+      when 'photo'   then (select ph.created_at from photo   ph where ph.id = p_source_id)
+      when 'place'   then (select pl.created_at from place   pl where pl.id = p_source_id)
+      when 'visit'   then (select v.created_at  from visit   v  where v.id  = p_source_id)
+      when 'journey' then (select j.created_at  from journey j  where j.id  = p_source_id)
+      when 'event'   then (select ev.created_at from event   ev where ev.id = p_source_id)
+      when 'note'    then (select n.created_at  from note    n  where n.id  = p_source_id)
+    end,
+    p_created_at
+  );
 $$;
 
 comment on function news_arrived_at (text, uuid, timestamptz) is
@@ -137,7 +160,28 @@ comment on function news_arrived_at (text, uuid, timestamptz) is
 -- are two separate notions and collapsing them would look like a tidy
 -- simplification while silently sealing letters their author could still have
 -- fixed.
-create view news as
+-- **`security_invoker` is what makes the seal hold, and without it this view
+-- is a hole straight through it.**
+--
+-- A Postgres view reads its base tables as the view's *owner*, not as the
+-- caller. This view is owned by `postgres`, who has `rolbypassrls` — so
+-- without this option `entry_readable` is evaluated as the owner, every policy
+-- is waived, and `select * from news` hands a Person the Entry of a Letter
+-- sealed until 2036. Measured, not assumed: selecting from `entry` directly as
+-- `yaongi_signed_in` returned 0 rows while selecting from this view returned
+-- 1, from the same transaction.
+--
+-- That is the worst possible failure for this app. It is silent, it looks
+-- correct in every test written as the owner, and what it leaks is precisely
+-- the thing that has no undo — a surprise, spoiled once and forever.
+--
+-- `security_invoker = true` makes the view read `entry` as whoever selected
+-- from it, so the policy applies exactly as it does to a direct select and
+-- this file needs no seal logic of its own. It pairs with the `SET LOCAL ROLE`
+-- in `lib/news.ts`: the option decides *whose* rights are used, the role
+-- decides *which* rights those are, and both are required. Querying this view
+-- as the owner still bypasses everything, which is why the app never does.
+create view news with (security_invoker = true) as
   select e.id                                              as entry_id,
          e.kind,
          e.source_id,
