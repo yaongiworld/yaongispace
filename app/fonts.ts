@@ -59,4 +59,36 @@ export const fredoka = localFont({
   fallback: ["system-ui", "sans-serif"],
 });
 
-export const fontVariables = `${pretendard.variable} ${jua.variable} ${fredoka.variable}`;
+/**
+ * The hand for a Letter's body, and only a Letter's body.
+ *
+ * Gaegu (OFL) is a handwriting face. It is the one place in the app where the
+ * type is doing something other than being legible chrome: a letter should
+ * look written rather than rendered, which is the same reason the verb is
+ * 봉하기 and not 보내기.
+ *
+ * Self-hosted like every other Korean-bearing face — `next/font/google`
+ * silently drops CJK subsets and the failure is tofu at runtime, not a build
+ * error (ADR-0007).
+ *
+ * **It carries 2,350 Hangul syllables, not all 11,172** — the common set, the
+ * same shape as Jua. That is fine for a display face and is worth thinking
+ * about for a body one: a rare syllable falls through to Pretendard mid-word,
+ * which is visible. It is the right trade anyway. The alternative is either no
+ * handwriting at all or a megabyte-plus face on a phone, and the fallback is a
+ * seam in a rare word rather than a box — `fallback` below is what makes the
+ * difference between those two outcomes, so keep Pretendard at the front of it.
+ */
+export const gaegu = localFont({
+  src: "../public/fonts/Gaegu-Regular.subset.woff2",
+  weight: "400",
+  variable: "--font-gaegu",
+  display: "swap",
+  // Not preloaded: it is only reached inside a Letter, which is never the
+  // first paint. Preloading it would cost every other section 84KB.
+  preload: false,
+  // Pretendard first, deliberately — see the syllable-coverage note above.
+  fallback: ["var(--font-pretendard)", "system-ui", "sans-serif"],
+});
+
+export const fontVariables = `${pretendard.variable} ${jua.variable} ${fredoka.variable} ${gaegu.variable}`;
