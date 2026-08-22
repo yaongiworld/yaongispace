@@ -27,8 +27,32 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
+      # Not just a healthy database — a *prepared* one. Waiting only on the
+      # database would start the app against an empty schema and the first
+      # page would 500 on a missing table.
+      setup:
+        condition: service_completed_successfully
+
+  # Migrations and the two of us, applied once per `up`.
+  #
+  # A one-shot service rather than a step in the app's command: it has to
+  # finish before the app starts, and it must not restart with it. The script
+  # is idempotent — it skips the migrations if the schema is already there and
+  # skips seeding if a Person already exists — so running it on every `up`
+  # costs a second and means there is no separate command to forget.
+  setup:
+    build: .
+    command: node scripts/seed-dev.mjs
+    environment:
+      DATABASE_URL: postgresql://postgres:yaongi@db:5432/postgres
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
       db:
         condition: service_healthy
+    restart: "no"
 
   db:
     image: supabase/postgres:15.8.1.060
