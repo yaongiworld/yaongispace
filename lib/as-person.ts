@@ -5,10 +5,15 @@ import { db } from "@/lib/db";
  * Run a unit of work as the signed-in Person, with RLS enforced.
  *
  * The app connects to Postgres as the owner, and **the owner bypasses every
- * policy**. That is fine for sign-in, which runs before there is a Person to be
- * — but for the photo routes it would mean the wall built in 002 and 006 is
- * never actually walked into. The policies would be tested (they are, via
- * `asPerson` in `tests/db.ts`) and then not used, which is the worst of both.
+ * policy**. That is fine for sign-in, which runs before there is a Person to
+ * be — everywhere else it would mean the wall built across 002–007 is never
+ * actually walked into. The policies would be tested (they are, via `asPerson`
+ * in `tests/db.ts`) and then not used, which is the worst of both.
+ *
+ * This is the one home for that mechanism. Letters, photos and News each grew
+ * their own copy while being built in parallel; they were identical, and three
+ * copies of the rule that decides who may read a sealed letter is three places
+ * for it to drift. Anything that reads person-scoped data goes through here.
  *
  * So this does what the test harness does: sets the same JWT claim the policies
  * read, drops into `yaongi_signed_in`, and runs the work there. `SET LOCAL`

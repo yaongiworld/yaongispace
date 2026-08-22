@@ -1,5 +1,5 @@
 import type { QueryResultRow } from "pg";
-import { db } from "./db";
+import { asPerson as runAsPerson } from "./as-person";
 
 /**
  * News — what the other one of us has been up to lately.
@@ -104,26 +104,9 @@ async function asPerson<T>(
   personId: string,
   body: (query: QueryFn) => Promise<T>,
 ): Promise<T> {
-  const client = await db().connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
-      JSON.stringify({ person_id: personId }),
-    ]);
-    await client.query("SET LOCAL ROLE yaongi_signed_in");
-
-    const query = (<R extends QueryResultRow>(sql: string, values?: unknown[]) =>
-      client.query<R>(sql, values)) as QueryFn;
-    const result = await body(query);
-
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  return runAsPerson(personId, (client) =>
+    body(((sql: string, values?: unknown[]) => client.query(sql, values)) as QueryFn),
+  );
 }
 
 /**

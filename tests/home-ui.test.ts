@@ -90,9 +90,18 @@ describe("the hearth", () => {
   it("reads News as the signed-in Person", () => {
     // Query as the owner and every seal in the archive is bypassed. This is
     // the single most important correctness constraint in the section.
-    const news = read("lib/news.ts");
-    expect(news).toContain("SET LOCAL ROLE yaongi_signed_in");
-    expect(news).toContain("request.jwt.claims");
+    //
+    // The mechanism lives in `lib/as-person.ts` — one home shared by letters,
+    // photos and News, rather than the three identical copies the parallel
+    // build produced. So this asserts two things: that News goes through that
+    // helper, and that the helper still does what its name promises. Checking
+    // only the first would pass against a helper that had quietly stopped
+    // dropping the role.
+    expect(read("lib/news.ts")).toContain("as-person");
+
+    const helper = read("lib/as-person.ts");
+    expect(helper).toContain("SET LOCAL ROLE yaongi_signed_in");
+    expect(helper).toContain("request.jwt.claims");
   });
 
   it("orders by arrival, the one place that does not use occurred_at", () => {

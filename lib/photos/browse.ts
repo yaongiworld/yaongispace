@@ -1,4 +1,4 @@
-import { asPerson } from "./as-person";
+import { asPerson } from "@/lib/as-person";
 import { photoStorage } from "./index";
 import { READ_URL_TTL_SECONDS } from "./storage";
 

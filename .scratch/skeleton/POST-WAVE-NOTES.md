@@ -26,16 +26,23 @@ But it is a trap for whoever adds the next section: the default (`db()`) is the
 unsafe one, and it is unsafe silently. Deciding this deliberately is cheap now
 and expensive after Recall reads across everything.
 
-## 2. `asPerson` exists twice
+## 2. `asPerson` existed three times — **fixed**
 
-`lib/letters.ts` and `lib/photos/as-person.ts` each define it. They are
-semantically identical — same JWT claim, same `SET LOCAL ROLE`, same
-transaction scoping — and differ only in whether they hand the caller a
-`PoolClient` or a narrowed query function. Two agents solved the same problem in
-isolation, which is the expected cost of the fan-out, not a mistake by either.
+Letters, photos and News each grew their own copy while being built in
+parallel. All three were semantically identical: same JWT claim, same
+`SET LOCAL ROLE`, same transaction scoping. Three agents solving one problem in
+isolation is the expected cost of the fan-out, not a mistake by any of them.
 
-Worth collapsing into one before a fourth section copies whichever it finds
-first. The photos version is the more general of the two.
+Collapsed into **`lib/as-person.ts`**, the photos version being the most
+general; letters and News delegate to it. Three copies of the rule that decides
+who may read a sealed Letter is three places for it to drift.
+
+`tests/home-ui.test.ts` asserted that `lib/news.ts` literally contained
+`SET LOCAL ROLE`, so the move broke it — correctly, since it is guarding the
+most important constraint in the section. It now asserts both that News goes
+through the helper *and* that the helper still drops the role, which is
+stricter than what it replaced: checking only the former would pass against a
+helper that had quietly stopped doing its job.
 
 ## 3. Two tables deliberately outside the Entry index
 
@@ -62,7 +69,26 @@ agents hit it and both renamed their column rather than editing the test:
 Both renames are truer to what the column means. Noted so the asymmetry reads as
 a decision rather than an oversight.
 
-## 5. R2 has never been contacted
+## 5. One view is owner-rights, and views default that way
+
+Ticket 06 found that **a Postgres view reads its base tables as the view's
+owner**, who holds `rolbypassrls`. Its `news` view therefore declares
+`with (security_invoker = true)`; without it the view returned a Letter sealed
+until 2036 that a direct select on `entry` correctly hid.
+
+`imminent_event` (migration 005) does **not** declare it. I probed this
+directly: as a non-owner Person the view returns the same rows as a direct
+query on `event`, so **it is not currently a leak** — Events are shared by both
+of us by design and carry no per-person visibility rule. It is latent risk
+rather than a live bug, and it only stays that way while that remains true. If
+that view ever selects a column from `entry` or `letter`, or Events ever gain a
+visibility rule, it becomes one silently.
+
+The general lesson is the trap, not the instance: **a new view is owner-rights
+unless it says otherwise**, which is the unsafe default, exactly like `db()` in
+note 1.
+
+## 6. R2 has never been contacted
 
 `lib/photos/storage.ts` presigns with hand-rolled SigV4 and has never spoken to
 Cloudflare — no bucket and no credentials exist yet. Tests assert URL shape and
