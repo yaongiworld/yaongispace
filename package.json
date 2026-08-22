@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:up": "docker compose up -d --wait",
-    "db:down": "docker compose down -v"
+    "db:up": "docker compose --env-file .env.example up -d --wait",
+    "db:down": "docker compose --env-file .env.example down -v"
   },
   "dependencies": {
     "next": "^15.1.0",
