@@ -299,7 +299,17 @@ comment on function event_is_imminent (timestamptz, timestamptz, interval) is
 -- rather than special-casing Events into a second code path. `entry_id` is
 -- null only in the window between an Event being inserted and its trigger
 -- running, which is to say never.
-create view imminent_event as
+-- `security_invoker` is not decoration here. A view without it runs its body as
+-- the view's *owner*, who holds `rolbypassrls` — so the `left join entry` below
+-- would read the Entry index around every policy on it, and hand back rows a
+-- direct select correctly hides. The `event` half is safe either way, because
+-- `event_occurrences` is a non-definer function that reads under the caller's
+-- rights; it is the join that leaks. Measured, same transaction, with a
+-- deny-all policy on `entry`: 0 rows direct, 1 row through the view.
+--
+-- Entry carries sealed Letters, so this is the seal's blast radius, not the
+-- calendar's. `007_news.sql` reaches the same conclusion for the same reason.
+create view imminent_event with (security_invoker = true) as
   select o.id            as event_id,
          e.id            as entry_id,
          o.title,
@@ -345,6 +355,6 @@ grant execute on function event_occurrences (timestamptz, timestamptz) to yaongi
 grant execute on function journey_events (uuid) to yaongi_signed_in;
 grant execute on function event_is_imminent (timestamptz, timestamptz, interval) to yaongi_signed_in;
 
--- The view is likewise not `security_barrier`-exempt: it selects through
--- `event_occurrences`, which reads `event` under the caller's RLS.
+-- The view is `security_invoker` (see its definition above), so both halves —
+-- `event_occurrences` and the `entry` join — read under the caller's RLS.
 grant select on imminent_event to yaongi_signed_in;

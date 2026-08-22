@@ -614,3 +614,36 @@ describe("what the calendar deliberately does not have", () => {
     expect(rrule.rows).toHaveLength(0);
   });
 });
+
+describe("the view does not read around RLS", () => {
+  // A Postgres view runs its body as the view's *owner* unless it declares
+  // `security_invoker`, and the owner holds `rolbypassrls`. `imminent_event`
+  // left-joins `entry`, which carries sealed Letters — so without the flag the
+  // calendar would be a way to read the Entry index around every policy on it.
+  //
+  // The `event` half was always safe (`event_occurrences` is a non-definer
+  // function reading under the caller's rights), which is exactly why this was
+  // easy to miss: probing the event path alone shows nothing wrong.
+  test("imminent_event reads entry as the caller, not as its owner", async () => {
+    await db.query(
+      "INSERT INTO event (title, occurred_at, person_id) VALUES ('기념일', now() + interval '2 days', $1)",
+      [towee],
+    );
+
+    // Deny every read of the Entry index, then ask both ways. A view that
+    // honours the policy can only agree with a direct select.
+    await db.query("DROP POLICY IF EXISTS entry_readable ON entry");
+    await db.query("CREATE POLICY entry_denied ON entry FOR SELECT USING (false)");
+
+    await asPerson(db, yangcho, async () => {
+      const direct = await db.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM entry",
+      );
+      const throughView = await db.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM imminent_event WHERE entry_id IS NOT NULL",
+      );
+      expect(direct.rows[0].n).toBe(0);
+      expect(throughView.rows[0].n).toBe(0);
+    });
+  });
+});
