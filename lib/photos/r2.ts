@@ -56,13 +56,27 @@ const REGION = "auto";
 const SERVICE = "s3";
 
 /**
+ * Only the variables this reads, so a test can hand over a four-line object
+ * rather than a whole environment. The index signature is what makes
+ * `process.env` assignable to it — the same shape `SessionEnv` uses.
+ */
+export type R2Env = {
+  R2_ACCOUNT_ID?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
+  R2_BUCKET?: string;
+  R2_PUBLIC_HOST?: string;
+  [key: string]: string | undefined;
+};
+
+/**
  * Read the configuration from the environment, or explain what is missing.
  *
  * Throws rather than returning a partial config: a storage layer that silently
  * came up half-configured would fail at the first upload, in the background, on
  * somebody's phone, after a trip.
  */
-export function r2ConfigFromEnv(env: NodeJS.ProcessEnv = process.env): R2Config {
+export function r2ConfigFromEnv(env: R2Env = process.env): R2Config {
   const required = {
     accountId: env.R2_ACCOUNT_ID,
     accessKeyId: env.R2_ACCESS_KEY_ID,
@@ -141,7 +155,15 @@ export class R2Storage implements PhotoStorage {
       byteSize: body.byteLength,
     });
 
-    const response = await fetch(url, { method: "PUT", body, headers });
+    /* `body.buffer` rather than `body`: the DOM's BodyInit accepts an
+       ArrayBuffer view, and TypeScript's Uint8Array generic does not line up
+       with it directly. Sliced to this view's own bounds so a Uint8Array that
+       is a window onto a larger buffer sends only its own bytes. */
+    const response = await fetch(url, {
+      method: "PUT",
+      body: body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer,
+      headers,
+    });
     if (!response.ok) {
       throw new Error(`R2 rejected a write to ${key}: ${response.status}`);
     }

@@ -139,7 +139,7 @@ describe("the R2 presigner", () => {
 
 describe("R2 configuration", () => {
   test("names every variable that is missing, rather than failing at first upload", () => {
-    expect(() => r2ConfigFromEnv({} as NodeJS.ProcessEnv)).toThrow(
+    expect(() => r2ConfigFromEnv({})).toThrow(
       /R2_ACCOUNT_ID.*R2_ACCESS_KEY_ID.*R2_SECRET_ACCESS_KEY.*R2_BUCKET/,
     );
   });
@@ -150,7 +150,7 @@ describe("R2 configuration", () => {
       R2_ACCESS_KEY_ID: "key",
       R2_SECRET_ACCESS_KEY: "secret",
       R2_BUCKET: "bucket",
-    } as NodeJS.ProcessEnv);
+    });
     expect(config.bucket).toBe("bucket");
     expect(config.publicHost).toBeUndefined();
   });
