@@ -16,6 +16,8 @@ export const YANGCHO_EMAIL = "yangcho@example.com";
 /** Everything the migrations create, emptied, in dependency order. */
 const TABLES = [
   "entry",
+  "import_upload",
+  "place_proposal",
   "rendition",
   "photo",
   "visit",
