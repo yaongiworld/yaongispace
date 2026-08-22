@@ -96,6 +96,14 @@ reads across. **No app code ships from this effort.**
   rather than idling. Tab bar is primary navigation; the home shortcut grid is a warm
   secondary. Prototypes in [`prototypes/`](../prototypes/).
 
+- [The one 3D moment on the home page](tickets/007-home-3d-moment.md) — **CSS 3D
+  transforms, not WebGL.** Built all three and compared at phone size: real 3D cost ~600KB
+  and a warmer battery for a difference invisible at 132px, and it needs a *modelled* cat.
+  Liveliness comes from the **reaction**, not the rendering
+  ([ADR-0008](../docs/adr/0008-css-3d-not-webgl.md)). **The mascot will be commissioned**
+  — every emoji set is a cat *glyph*, not a mascot — and it has **moods**, swapping by app
+  state. Google Noto flat cats are an explicit placeholder until then.
+
 ## Not yet specified
 
 <!-- in-scope fog: real questions not yet sharp enough to ticket -->
@@ -110,10 +118,6 @@ reads across. **No app code ships from this effort.**
   [ticket 012](tickets/012-oauth-verification.md) holds the verification checklist.
   Picking this up means accepting sensitive-scope verification. The data model is
   designed so sync arrives as a mirror onto Events we already own.
-- **An original mascot.** Fluent's cat is the app's face for now, which keeps the
-  zzingni private-use-only restriction alive — no public app, no app store, no MBA
-  portfolio. Commissioning an original clay cat (or Yangcho drawing one) is what buys
-  that back. Not urgent, and not a blocker; revisit if the app ever wants to be seen.
 - **Offline behaviour.** How much works on a phone with no signal.
 - **Backup and export.** Concrete mechanism honouring *long-lived data* — how the two
   of you get everything out if Supabase or Vercel disappears.
@@ -134,6 +138,13 @@ reads across. **No app code ships from this effort.**
   would have cost a second Cloud project and weekly re-consent for an occasional
   convenience. Photos arrive by PWA share target and scheduled Takeout instead, touching
   no Google API. Ruled out consciously, not overlooked.
+- **Third-party character art (zzingni).** *Retired as a constraint, 2026-08-22.* The
+  charting session recorded zzingni emoticons as private-use-only, which meant the app
+  could never be public, listed, or shown in Yangcho's MBA portfolio. With the mascot now
+  being **commissioned as an original** ([ticket 017](tickets/017-commission-the-yaongi.md)),
+  that restriction no longer binds once the commission lands. Fluent and Noto assets used
+  meanwhile are MIT and Apache-2.0 — both fine in public. **Nothing in the app need depend
+  on third-party character IP.**
 - **Voice authentication ("Yaongichu!")** — deferred to a future iteration. Research is
   already done and should not be repeated; see the closed research ticket for the
   findings brief. Bottom line for whoever picks this up: managed speaker verification

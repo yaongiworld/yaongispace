@@ -35,8 +35,11 @@ session; take the first unblocked, unclaimed one unless told otherwise.
 - **Theme**: **Soft Clay** — warm peach→pink→lilac gradient, puffy white cards, warm
   brown ink. **Light only, no dark mode** (set `color-scheme: light`). 3D is confined to
   the home page for now.
-- **Assets**: Microsoft Fluent Emoji 3D (MIT, no attribution) for characters and icons;
-  Phosphor or Iconoir for UI chrome. One cat, in one place, reacting — not sprinkled.
+- **Assets**: Fluent Emoji 3D (MIT) / Noto (Apache-2.0) for icons; Phosphor or Iconoir for
+  UI chrome. **The hero mascot is being commissioned as an original** — emoji cats are
+  glyphs, not mascots. It has moods, swapping by app state. One cat, one place, reacting.
+- **Motion**: CSS 3D transforms, not WebGL — measured, and real 3D was invisible at 132px
+  for ~600KB and a warmer battery.
 - **Fonts**: Pretendard **self-hosted via `next/font/local`** — `next/font/google`
   silently drops CJK subsets and fails quietly. BM Jua + Fredoka for display.
 - **Photos are imported, not synced** — Google killed the library-read scopes in 2025.
@@ -57,8 +60,10 @@ session; take the first unblocked, unclaimed one unless told otherwise.
 - **Commercial AI APIs**, chosen deliberately over self-hosting — a conscious trade
   against *privacy by default*, with a cheap exit if it stops feeling right.
 
-## Constraint worth remembering
+## No third-party character IP
 
-zzingni characters are third-party IP used under private-use-only. **This app cannot
-become public, go in an app store, or appear in Yangcho's MBA portfolio** while it uses
-them. Swap to original characters first if that ever changes.
+The mascot is being commissioned as an original, and all interim assets are MIT
+(Fluent) or Apache-2.0 (Noto). The earlier zzingni private-use-only restriction has
+therefore been retired — **this app may be made public, listed, or shown in Yangcho's
+MBA portfolio** once the commissioned yaongi lands. Keep it that way: do not introduce
+character art whose licence would re-impose that limit.
