@@ -102,8 +102,13 @@ export function buildAgenda(
  * anniversary exactly once, which is what makes a yearly repeat feel like a
  * calendar rather than a setting.
  *
- * Both bounds are widened by `loadMore` as you scroll, so neither is a limit
- * on what can be seen — only on what is fetched before you ask.
+ * `widenWindow` below exists to move both bounds outward, and it is tested —
+ * but **nothing calls it yet**. The agenda fetches this window once on the
+ * server and the scroller never asks for more, so today the bounds *are* the
+ * limit: a month back and a year forward. The ticket asks that the past be
+ * reachable by scrolling up, and one month of it is, which is why this is a
+ * shortfall rather than a broken promise. Wiring `widenWindow` to the
+ * scroller is the whole of the remaining work.
  */
 export function initialWindow(now: Date = new Date()): { from: Date; to: Date } {
   const { year, month, day } = seoulParts(now);

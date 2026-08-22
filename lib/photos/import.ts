@@ -316,10 +316,20 @@ export async function completeUpload(
 /**
  * Read an original back out of R2 to make renditions from.
  *
- * This is the one place the server holds an original's bytes, and it is *out*
- * of R2 rather than in from the client — the constraint is that originals never
- * transit Vercel on their way to storage, which this respects: by the time this
- * runs the bytes are already safely stored.
+ * This is the one place the server holds an original's bytes, and it pulls the
+ * whole file into the function's memory so `sharp` can resize it.
+ *
+ * Be honest about what that costs against ADR-0012. The rule is that bytes
+ * never transit Vercel; this reads them *out* of R2 after they are safely
+ * stored, so the upload path — the one that matters for a 40-photo import on
+ * mobile data — is genuinely direct and never touches us. But "never transits
+ * Vercel" is not true without qualification, and the qualification is the
+ * author's, not the ticket's. The rendition path does transit, once, per
+ * photo, on the way back out.
+ *
+ * The alternative is renditions made on the phone before upload, which trades
+ * a server round-trip for battery and a much wider surface of device quirks.
+ * Worth revisiting if the memory ceiling ever bites on a large original.
  *
  * Returns null on any failure. Renditions are derived; not having them yet is a
  * missing thumbnail, not a lost photo.
