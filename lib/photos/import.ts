@@ -124,6 +124,25 @@ export async function grantUpload(
     return { outcome: "duplicate" };
   }
 
+  /* Already on its way up, from an earlier share of the same file. The key is
+     the digest, so a second grant would hand out the identical storage key and
+     collide on `import_upload_storage_key_key` — which surfaces to the phone as
+     an opaque 503 rather than the silent no-op a re-import is supposed to be.
+     Sharing the same photo twice before the first upload finishes is ordinary,
+     not an error: the queue already holds it. */
+  const inFlight = await db.query(
+    `SELECT 1 FROM import_upload
+      WHERE sha256 = $1 AND id <> $2 AND state IN ('uploading', 'stored')`,
+    [sha256, uploadId],
+  );
+  if (inFlight.rowCount && inFlight.rowCount > 0) {
+    await db.query(
+      "UPDATE import_upload SET state = 'duplicate', sha256 = $2, updated_at = now() WHERE id = $1",
+      [uploadId, sha256],
+    );
+    return { outcome: "duplicate" };
+  }
+
   const key = originalKey(sha256, rows[0].content_type);
   const ticket = await storage.signedUpload({
     key,
@@ -339,11 +358,18 @@ async function fetchOriginal(
   key: string,
 ): Promise<Uint8Array | null> {
   try {
-    const { url } = await storage.signedRead({ key, expiresInSeconds: 300 });
+    const { url } = await storage.signedRead({ key, expiresInSeconds: 300, internal: true });
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`no renditions for ${key}: storage answered ${response.status}`);
+      return null;
+    }
     return new Uint8Array(await response.arrayBuffer());
-  } catch {
+  } catch (error) {
+    /* Still not fatal — the original is safe and renditions are rebuildable —
+       but it must not be *silent*. A swallowed failure here is a library that
+       quietly has no thumbnails, discovered months later. */
+    console.warn(`no renditions for ${key}:`, error);
     return null;
   }
 }

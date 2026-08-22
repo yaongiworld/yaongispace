@@ -270,6 +270,38 @@ describe("EXIF on the way in", () => {
   });
 
 
+
+  test("sharing the same photo twice before the first lands is a no-op, not a 503", async () => {
+    // The storage key is the digest, so two queue rows for one file would ask
+    // for the same key and collide on import_upload_storage_key_key. That
+    // surfaced to the phone as an opaque "storage unavailable" 503 — for
+    // something that is meant to be a silent no-op.
+    //
+    // Found by running the real import flow twice against a live S3 server;
+    // the fake never produced a second queue row for the same bytes.
+    const bytes = await aPhoto(300, 200);
+    const sha = sha256Of(bytes);
+
+    const [first, second] = await enqueue(db, towee, [
+      { filename: "제주.jpg", contentType: "image/jpeg", byteSize: bytes.byteLength, sha256: sha },
+      { filename: "제주-again.jpg", contentType: "image/jpeg", byteSize: bytes.byteLength, sha256: sha },
+    ]);
+
+    const granted = await grantUpload(db, storage, first.id, sha);
+    expect(granted.outcome).toBe("upload");
+
+    // The second asks while the first is still uploading — nothing has been
+    // stored yet, so the `photo` check above cannot catch it.
+    const again = await grantUpload(db, storage, second.id, sha);
+    expect(again.outcome).toBe("duplicate");
+
+    const { rows } = await db.query<{ state: string }>(
+      "SELECT state FROM import_upload WHERE id = $1",
+      [second.id],
+    );
+    expect(rows[0].state).toBe("duplicate");
+  });
+
   test("the complete route puts the phone's claims through the guard", () => {
     // The tests above prove `mergePhotoMetadata` refuses Null Island and a
     // year-3000 date. They do not prove anything *calls* it — and for a while
