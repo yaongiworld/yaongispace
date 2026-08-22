@@ -86,6 +86,16 @@ reads across. **No app code ships from this effort.**
   allowlist (as data, not a constant) plus RLS. Sessions effectively never expire — the
   phone's lock screen is the real boundary.
 
+- [What does bubbly and fun actually look like?](tickets/006-look-and-feel.md) —
+  **Soft Clay**, chosen from three built directions: warm peach→pink→lilac gradient, puffy
+  white cards (24–34px radii), warm brown ink. **Light only, no dark mode.**
+  **Microsoft Fluent Emoji 3D** for characters and icons (MIT, no attribution, identical
+  on every device; PNG not SVG) + Phosphor/Iconoir for UI chrome. **Pretendard
+  self-hosted** — `next/font/google` silently drops CJK subsets
+  ([ADR-0007](../docs/adr/0007-self-host-korean-fonts.md)). One cat, one place, reacting
+  rather than idling. Tab bar is primary navigation; the home shortcut grid is a warm
+  secondary. Prototypes in [`prototypes/`](../prototypes/).
+
 ## Not yet specified
 
 <!-- in-scope fog: real questions not yet sharp enough to ticket -->
@@ -100,6 +110,10 @@ reads across. **No app code ships from this effort.**
   [ticket 012](tickets/012-oauth-verification.md) holds the verification checklist.
   Picking this up means accepting sensitive-scope verification. The data model is
   designed so sync arrives as a mirror onto Events we already own.
+- **An original mascot.** Fluent's cat is the app's face for now, which keeps the
+  zzingni private-use-only restriction alive — no public app, no app store, no MBA
+  portfolio. Commissioning an original clay cat (or Yangcho drawing one) is what buys
+  that back. Not urgent, and not a blocker; revisit if the app ever wants to be seen.
 - **Offline behaviour.** How much works on a phone with no signal.
 - **Backup and export.** Concrete mechanism honouring *long-lived data* — how the two
   of you get everything out if Supabase or Vercel disappears.

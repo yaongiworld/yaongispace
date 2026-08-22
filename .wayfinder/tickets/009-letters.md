@@ -17,7 +17,12 @@ feature.
   the fact that it's composed rather than fired off. Whatever the answer, the interface
   should make writing one feel deliberate.
 - Composition experience: plain text, rich text, or something with paper/stamp/seal
-  texture. Prototype it — this is a feel question.
+  texture. Prototype it — this is a feel question. **Note the Paper Diary direction was
+  rejected for the app overall in favour of Soft Clay** — but letters are the one section
+  where paper texture might still earn its place as a local flourish. Decide whether that
+  is a welcome accent or an inconsistency.
+- Type: BM Jua/Fredoka are the display faces and Pretendard the body. A handwritten face
+  for letter *bodies* specifically would need to render Korean well — most do not.
 - Can a letter be sealed until a date, or scheduled? (Sitting in fog; may sharpen here.)
 - Are letters ever edited after sending, or immutable once sent?
 - How they're read and re-read years later — this is the section most likely to matter

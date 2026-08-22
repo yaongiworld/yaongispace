@@ -32,7 +32,13 @@ session; take the first unblocked, unclaimed one unless told otherwise.
   when built it sits *on top of* real auth — never as the lock.
 - **Stack**: Next.js 15 + React 19 + Tailwind 4 + TypeScript + Supabase, on Vercel.
   Matches `../llc/dashboard`; familiarity beats novelty for something meant to last.
-- **Theme**: bubbly and fun, cats and zzingni. 3D is confined to the home page for now.
+- **Theme**: **Soft Clay** — warm peach→pink→lilac gradient, puffy white cards, warm
+  brown ink. **Light only, no dark mode** (set `color-scheme: light`). 3D is confined to
+  the home page for now.
+- **Assets**: Microsoft Fluent Emoji 3D (MIT, no attribution) for characters and icons;
+  Phosphor or Iconoir for UI chrome. One cat, in one place, reacting — not sprinkled.
+- **Fonts**: Pretendard **self-hosted via `next/font/local`** — `next/font/google`
+  silently drops CJK subsets and fails quietly. BM Jua + Fredoka for display.
 - **Photos are imported, not synced** — Google killed the library-read scopes in 2025.
   They arrive by PWA share target and scheduled Takeout. **The Photos API is not used.**
 - **Google is sign-in only** (`email`/`profile`). No sensitive or restricted scopes

@@ -21,5 +21,12 @@ single moment *is* and prove it survives a real phone.
   lazy-load and must not block first paint.
 - Graceful degradation on a weak connection or reduced-motion preference.
 
-Blocked on look-and-feel — the 3D moment has to sit inside an established visual
-language, not invent one.
+**Now unblocked.** The visual language is Soft Clay, and the hero cat is already
+established as the one character, in one place, reacting rather than idling — so this
+ticket decides how much *dimension* that cat gains, not what it is.
+
+Two constraints inherited from look-and-feel:
+- Fluent Emoji 3D assets are **pre-rendered PNG**, so the cat is currently raster. Real
+  3D would mean replacing it with a model — a bigger change than "add animation".
+- The current idle bob is CSS. Ask honestly whether real 3D beats a well-made sprite
+  sequence or Rive/Lottie at phone size, given the battery cost.
