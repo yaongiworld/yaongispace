@@ -23,8 +23,34 @@ import {
  * gets sent back to the front door, because a stack trace on a public route is
  * both unfriendly and a small information leak.
  */
+/**
+ * The address the *browser* used, which is not always the one we received on.
+ *
+ * `request.url` is the URL as it arrived at the server. Behind a container or
+ * a proxy that is the internal bind address — `http://0.0.0.0:3000` — so every
+ * redirect built from it sends the browser to a host that, from the browser's
+ * side, is either nothing or somebody else's dev server. It looks exactly like
+ * a 404 on our own app.
+ *
+ * `GOOGLE_REDIRECT_URI` is the honest answer: it is already the canonical
+ * public address of this route, it has to match the Cloud console exactly, and
+ * it is the one URL Google itself was told to come back to. Falling back to
+ * the request keeps this working if it is ever unset.
+ */
+function publicOrigin(request: NextRequest): URL {
+  const configured = process.env.GOOGLE_REDIRECT_URI;
+  if (configured) {
+    try {
+      return new URL(configured);
+    } catch {
+      // A malformed value should not take out sign-in; fall through.
+    }
+  }
+  return new URL(request.url);
+}
+
 export async function GET(request: NextRequest) {
-  const url = new URL(request.url);
+  const url = publicOrigin(request);
   const jar = await cookies();
 
   const expectedState = jar.get(OAUTH_STATE_COOKIE)?.value;

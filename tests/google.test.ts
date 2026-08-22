@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import {
   GOOGLE_SCOPES,
@@ -60,4 +62,21 @@ test("a token missing its subject or email is refused", () => {
   expect(() => identityFromIdToken(idToken({ email: "towee@example.com" }))).toThrow();
   expect(() => identityFromIdToken(idToken({ sub: "1234" }))).toThrow();
   expect(() => identityFromIdToken("not-a-jwt")).toThrow();
+});
+
+test("the callback redirects to the browser's address, not the bind address", () => {
+  // Inside a container `request.url` is http://0.0.0.0:3000/... — the address
+  // the server listens on, not the one the browser typed. Redirects built
+  // from it send you to a host that is somebody else's dev server or nothing
+  // at all, which presents as a 404 on our own app after a *successful*
+  // sign-in. Found exactly that way.
+  const route = readFileSync(
+    join(import.meta.dirname, "..", "app/auth/callback/route.ts"),
+    "utf8",
+  );
+  expect(route).toContain("publicOrigin");
+  expect(route).toContain("GOOGLE_REDIRECT_URI");
+  // The bare form is what regressed; it may only appear as the fallback
+  // inside the helper, never as the thing redirects are built from.
+  expect(route).not.toMatch(/const url = new URL\(request\.url\)/);
 });
