@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { asPerson } from "@/lib/as-person";
 import { currentPersonId } from "@/lib/auth/current-person";
 import { completeUpload } from "@/lib/photos/import";
+import { mergePhotoMetadata, type PhotoMetadata } from "@/lib/photos/exif";
 import { photoStorage } from "@/lib/photos";
 
 /**
@@ -12,13 +13,27 @@ import { photoStorage } from "@/lib/photos";
  * original is open, and shipping 12MB to a server that must not receive it just
  * to read a date would defeat the upload design entirely.
  *
- * Those claims are **checked, not trusted**: `mergePhotoMetadata` refuses an
- * implausible date, a half-location and Null Island, and the server confirms
- * the object is actually in R2 before recording a Photo that points at it.
+ * Those claims are **filtered, not trusted**: they go through
+ * `mergePhotoMetadata`, which refuses an implausible date, a half-location and
+ * Null Island, and the server confirms the object is actually in R2 before
+ * recording a Photo that points at it. Filtered is not corroborated — the
+ * server never opens the original on this path, so a plausible lie survives.
+ * That is the trade ADR-0012 makes deliberately, and it is worth stating
+ * rather than implying a check that is not happening.
  *
  * Coordinates, if any, become a **proposal** — never a Place. A human names it
  * or nothing is named.
  */
+/** What the server knows on its own on this path: nothing. See the note below. */
+const EMPTY_READING: PhotoMetadata = {
+  occurredAt: null,
+  width: null,
+  height: null,
+  latitude: null,
+  longitude: null,
+  exif: {},
+};
+
 export async function POST(request: NextRequest) {
   const personId = await currentPersonId();
   if (!personId) {
@@ -51,15 +66,38 @@ export async function POST(request: NextRequest) {
       if (rows.length === 0) return { outcome: "missing" as const };
       if (rows[0].person_id !== personId) return { outcome: "forbidden" as const };
 
+      // The shape checks above only prove these are numbers and dates. What
+      // makes them *plausible* — a date this side of 1900 and not in the
+      // future, a location that is both halves or neither, and not Null
+      // Island — lives in `mergePhotoMetadata`, so the claims go through it
+      // rather than being trusted straight into the archive.
+      //
+      // The second argument is an empty reading, not a parse of the original:
+      // the server never holds the bytes on this path, by design. So this is
+      // the client's claims filtered, not the client's claims corroborated.
+      // Corroboration would mean pulling the original back out of R2, which
+      // is the trade ADR-0012 declines.
+      const claimed = mergePhotoMetadata(
+        {
+          occurredAt: asDate(body.occurredAt),
+          width: asPositiveInt(body.width),
+          height: asPositiveInt(body.height),
+          latitude: asCoordinate(body.latitude, 90),
+          longitude: asCoordinate(body.longitude, 180),
+          exif: isRecord(body.exif) ? body.exif : {},
+        },
+        EMPTY_READING,
+      );
+
       return completeUpload(client, photoStorage(), {
         uploadId,
         sha256,
-        occurredAt: asDate(body.occurredAt),
-        width: asPositiveInt(body.width),
-        height: asPositiveInt(body.height),
-        latitude: asCoordinate(body.latitude, 90),
-        longitude: asCoordinate(body.longitude, 180),
-        exif: isRecord(body.exif) ? body.exif : {},
+        occurredAt: claimed.occurredAt,
+        width: claimed.width,
+        height: claimed.height,
+        latitude: claimed.latitude,
+        longitude: claimed.longitude,
+        exif: claimed.exif,
         caption: typeof body.caption === "string" ? body.caption : null,
         journeyId: typeof body.journeyId === "string" ? body.journeyId : null,
       });

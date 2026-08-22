@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import type { Client } from "pg";
 import sharp from "sharp";
@@ -265,6 +267,31 @@ describe("EXIF on the way in", () => {
     const merged = mergePhotoMetadata({ latitude: 33.4581 }, fromServer);
     expect(merged.latitude).toBeNull();
     expect(merged.longitude).toBeNull();
+  });
+
+
+  test("the complete route puts the phone's claims through the guard", () => {
+    // The tests above prove `mergePhotoMetadata` refuses Null Island and a
+    // year-3000 date. They do not prove anything *calls* it — and for a while
+    // nothing did: the route's own comment described the check while passing
+    // raw client values straight through, so (0, 0) became a place_proposal
+    // and any parseable date became the primary time axis.
+    //
+    // A source-level assertion because the route is a Next handler that wants
+    // a running server to exercise; what is worth pinning is the wiring, which
+    // is exactly the part that was missing.
+    const route = readFileSync(
+      join(import.meta.dirname, "..", "app/api/photos/complete/route.ts"),
+      "utf8",
+    );
+    expect(route).toContain("mergePhotoMetadata");
+    // And that its result is what reaches the database, not the raw body.
+    expect(route).toContain("occurredAt: claimed.occurredAt");
+    expect(route).toContain("latitude: claimed.latitude");
+    // The raw readers still appear — as arguments *into* the guard, which is
+    // where they belong. What must not reappear is a call that hands
+    // `completeUpload` the unfiltered values directly.
+    expect(route).not.toMatch(/completeUpload\([\s\S]{0,400}asDate\(body\./);
   });
 
   test("a file sharp cannot read is still imported, dated by its import", async () => {
