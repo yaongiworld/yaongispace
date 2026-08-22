@@ -46,13 +46,38 @@ export interface R2Config {
    * the account's `r2.cloudflarestorage.com` endpoint, which works and is ugly.
    */
   publicHost?: string;
+  /**
+   * Scheme for the signed URLs. `https` everywhere real; `http` exists only so
+   * a local S3-compatible server (MinIO, for development) can be talked to
+   * without a certificate. Never `http` against anything holding real photos.
+   */
+  scheme?: "https" | "http";
+  /**
+   * Host the *server* reaches storage on, when it differs from the one handed
+   * to the browser.
+   *
+   * Against R2 these are the same public host and this stays unset. It exists
+   * for local development, where the browser must be told `localhost:9100` (a
+   * published port) while the app, inside its container, has to say
+   * `storage:9000` — `localhost` there is the app itself. Presigned URLs given
+   * to a client use `publicHost`; server-side calls like `exists` and `put`
+   * use this.
+   */
+  internalHost?: string;
+  /**
+   * SigV4 credential-scope region. R2 ignores it but requires the string; other
+   * S3-compatible servers do not, and MinIO defaults to `us-east-1`. It has to
+   * match what the server expects exactly or every signature is rejected.
+   */
+  region?: string;
 }
 
 /**
  * R2's region is always `auto`. It has no regions; the string is present only
- * because SigV4's scope requires one, and it must match exactly.
+ * because SigV4's scope requires one, and it must match exactly. Overridable
+ * because S3-compatible servers used in development do have an opinion.
  */
-const REGION = "auto";
+const DEFAULT_REGION = "auto";
 const SERVICE = "s3";
 
 /**
@@ -66,6 +91,9 @@ export type R2Env = {
   R2_SECRET_ACCESS_KEY?: string;
   R2_BUCKET?: string;
   R2_PUBLIC_HOST?: string;
+  R2_SCHEME?: string;
+  R2_INTERNAL_HOST?: string;
+  R2_REGION?: string;
   [key: string]: string | undefined;
 };
 
@@ -100,6 +128,9 @@ export function r2ConfigFromEnv(env: R2Env = process.env): R2Config {
     secretAccessKey: required.secretAccessKey!,
     bucket: required.bucket!,
     publicHost: env.R2_PUBLIC_HOST,
+    scheme: env.R2_SCHEME === "http" ? "http" : undefined,
+    region: env.R2_REGION,
+    internalHost: env.R2_INTERNAL_HOST,
   };
 }
 
@@ -131,11 +162,16 @@ export class R2Storage implements PhotoStorage {
   async signedRead({
     key,
     expiresInSeconds = READ_URL_TTL_SECONDS,
+    internal = false,
   }: {
     key: StorageKey;
     expiresInSeconds?: number;
+    /* Set when the *server* is going to follow this URL rather than a browser
+       — reading an original back to make renditions from. Against R2 it makes
+       no difference; locally the two hosts differ. */
+    internal?: boolean;
   }): Promise<SignedUrl> {
-    return this.presign("GET", key, expiresInSeconds, {});
+    return this.presign("GET", key, expiresInSeconds, {}, internal);
   }
 
   async put({
@@ -148,12 +184,20 @@ export class R2Storage implements PhotoStorage {
     contentType: string;
   }): Promise<void> {
     /* Renditions only. They are made on the server by sharp and are small; an
-       original arriving here would mean bytes travelled through Vercel. */
-    const { url, headers } = await this.signedUpload({
+       original arriving here would mean bytes travelled through Vercel.
+       Signed for the *internal* host: this PUT is made by us, not handed to a
+       browser. */
+    const headers = {
+      "content-type": contentType,
+      "content-length": String(body.byteLength),
+    };
+    const { url } = this.presign(
+      "PUT",
       key,
-      contentType,
-      byteSize: body.byteLength,
-    });
+      UPLOAD_URL_TTL_SECONDS,
+      headers,
+      true,
+    );
 
     /* `body.buffer` rather than `body`: the DOM's BodyInit accepts an
        ArrayBuffer view, and TypeScript's Uint8Array generic does not line up
@@ -170,7 +214,7 @@ export class R2Storage implements PhotoStorage {
   }
 
   async exists(key: StorageKey): Promise<boolean> {
-    const { url } = this.presign("HEAD", key, 60, {});
+    const { url } = this.presign("HEAD", key, 60, {}, true);
     const response = await fetch(url, { method: "HEAD" });
     if (response.status === 404) return false;
     if (!response.ok) {
@@ -180,7 +224,7 @@ export class R2Storage implements PhotoStorage {
   }
 
   async remove(key: StorageKey): Promise<void> {
-    const { url } = this.presign("DELETE", key, 60, {});
+    const { url } = this.presign("DELETE", key, 60, {}, true);
     const response = await fetch(url, { method: "DELETE" });
     /* 404 is success: the object is not there, which is what was wanted. */
     if (!response.ok && response.status !== 404) {
@@ -189,7 +233,8 @@ export class R2Storage implements PhotoStorage {
   }
 
   /** The endpoint bytes actually go to. A custom domain only changes the host. */
-  private host(): string {
+  private host(internal = false): string {
+    if (internal && this.config.internalHost) return this.config.internalHost;
     return (
       this.config.publicHost ?? `${this.config.accountId}.r2.cloudflarestorage.com`
     );
@@ -206,11 +251,14 @@ export class R2Storage implements PhotoStorage {
     key: StorageKey,
     expiresInSeconds: number,
     signedHeaders: Record<string, string>,
+    /* Server-to-storage rather than browser-to-storage. The host is signed, so
+       this has to be decided before the signature, not swapped in after. */
+    internal = false,
   ): SignedUrl {
     const now = new Date();
     const amzDate = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
     const dateStamp = amzDate.slice(0, 8);
-    const host = this.host();
+    const host = this.host(internal);
 
     /* The path. Each segment is encoded separately: `/` between segments is
        structure and must survive, everything inside one is data. */
@@ -226,7 +274,8 @@ export class R2Storage implements PhotoStorage {
     const headerNames = Object.keys(headers).sort();
     const signedHeaderList = headerNames.join(";");
 
-    const credentialScope = `${dateStamp}/${REGION}/${SERVICE}/aws4_request`;
+    const region = this.config.region ?? DEFAULT_REGION;
+    const credentialScope = `${dateStamp}/${region}/${SERVICE}/aws4_request`;
 
     /* Query parameters, sorted by key. `X-Amz-Signature` is not among them —
        it is what all of this produces. */
@@ -266,7 +315,7 @@ export class R2Storage implements PhotoStorage {
           service. Written out rather than folded, because the order is the
           whole algorithm and a reduce hides it. */
     const dateKey = hmac(`AWS4${this.config.secretAccessKey}`, dateStamp);
-    const regionKey = hmac(dateKey, REGION);
+    const regionKey = hmac(dateKey, region);
     const serviceKey = hmac(regionKey, SERVICE);
     const signingKey = hmac(serviceKey, "aws4_request");
 
@@ -275,7 +324,7 @@ export class R2Storage implements PhotoStorage {
 
     /* 5. The URL. */
     return {
-      url: `https://${host}${canonicalUri}?${canonicalQuery}&X-Amz-Signature=${signature}`,
+      url: `${this.config.scheme ?? "https"}://${host}${canonicalUri}?${canonicalQuery}&X-Amz-Signature=${signature}`,
       expiresAt: new Date(now.getTime() + expiresInSeconds * 1000),
     };
   }

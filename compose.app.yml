@@ -23,6 +23,26 @@ services:
       # absolutised icon/manifest URL points at whatever is on that port —
       # which on this machine is a different dev server answering 404.
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3100}
+      # Photo bytes. MinIO stands in for R2 locally: same S3 API, same SigV4,
+      # so the signing path under test is the one that runs in production.
+      #
+      # R2_PUBLIC_HOST is localhost:9000, not the `storage` service name,
+      # because these URLs are handed to the *browser* to PUT and GET
+      # directly — that is the whole point of presigning, and a container
+      # hostname means nothing outside the compose network.
+      R2_ACCOUNT_ID: local
+      R2_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-yaongi}
+      R2_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-yaongi-dev-secret}
+      R2_BUCKET: ${R2_BUCKET:-yaongi-photos}
+      R2_PUBLIC_HOST: ${R2_PUBLIC_HOST:-localhost:9100}
+      # What the *app* dials, as opposed to what the browser is told. Inside
+      # the compose network `localhost` is the app itself, so a server-side
+      # exists()/put() against the public host connection-refuses. Unset
+      # against real R2, where both are the same host.
+      R2_INTERNAL_HOST: storage:9000
+      R2_SCHEME: http
+      # MinIO validates the SigV4 scope; R2's `auto` is not what it expects.
+      R2_REGION: us-east-1
     volumes:
       # Source mounted for live reload; the two anonymous volumes keep the
       # container's own node_modules and .next from being shadowed by the
@@ -35,6 +55,8 @@ services:
       # database would start the app against an empty schema and the first
       # page would 500 on a missing table.
       setup:
+        condition: service_completed_successfully
+      storage-setup:
         condition: service_completed_successfully
 
   # Migrations and the two of us, applied once per `up`.
@@ -58,6 +80,50 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Photo storage, standing in for Cloudflare R2.
+  #
+  # Same S3 API and same SigV4 signing, so the code path exercised here is the
+  # one that runs against R2 — which until now had never been run at all. What
+  # it does not prove is R2's own quirks; it proves ours.
+  storage:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yaongi}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-yaongi-dev-secret}
+    ports:
+      # 9100/9101, not MinIO's usual 9000/9001 — those are already taken by
+      # another container on this machine. The published port has to match
+      # R2_PUBLIC_HOST above, because the browser is what follows these URLs.
+      - "9100:9000"
+      - "9101:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - yaongi_dev_photos:/data
+
+  # Create the bucket once. MinIO starts empty and a missing bucket fails at
+  # the first upload with an opaque 404 from a presigned URL.
+  storage-setup:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-yaongi}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-yaongi-dev-secret}
+      R2_BUCKET: ${R2_BUCKET:-yaongi-photos}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://storage:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/$$R2_BUCKET &&
+      echo bucket $$R2_BUCKET ready
+      "
+    restart: "no"
+
   db:
     image: supabase/postgres:15.8.1.060
     environment:
@@ -75,3 +141,4 @@ services:
 
 volumes:
   yaongi_dev_db:
+  yaongi_dev_photos:

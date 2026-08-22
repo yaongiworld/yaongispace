@@ -84,6 +84,8 @@ export interface PhotoStorage {
   signedRead(input: {
     key: StorageKey;
     expiresInSeconds?: number;
+    /** The server, not a browser, will follow this URL. */
+    internal?: boolean;
   }): Promise<SignedUrl>;
 
   /**
