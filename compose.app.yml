@@ -19,6 +19,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-not-configured}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-not-configured}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3100/auth/callback}
+      # Without this, `metadataBase` falls back to localhost:3000 and every
+      # absolutised icon/manifest URL points at whatever is on that port —
+      # which on this machine is a different dev server answering 404.
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3100}
     volumes:
       # Source mounted for live reload; the two anonymous volumes keep the
       # container's own node_modules and .next from being shadowed by the
