@@ -11,7 +11,25 @@ import { seoulDayKey } from "../lib/calendar/dates";
  * agenda back into a month grid or collapses a February into a single line.
  */
 
-function occurrence(fields: Partial<Occurrence> & { occursAt: string }): Occurrence {
+/**
+ * An Occurrence from ISO strings, which is how they are written here.
+ *
+ * The date fields are declared as strings rather than intersected onto
+ * `Partial<Occurrence>` — that produces `Date & string`, which nothing can
+ * satisfy, and an `as Occurrence` cast at the end hides it from the function
+ * while leaving every call site failing to typecheck.
+ */
+function occurrence(fields: {
+  occursAt: string;
+  occurredAt?: string;
+  id?: string;
+  title?: string;
+  description?: string | null;
+  allDay?: boolean;
+  repeatsYearly?: boolean;
+  isRepeat?: boolean;
+  personId?: string;
+}): Occurrence {
   return {
     id: fields.id ?? crypto.randomUUID(),
     title: fields.title ?? "일정",
@@ -23,7 +41,7 @@ function occurrence(fields: Partial<Occurrence> & { occursAt: string }): Occurre
     repeatsYearly: fields.repeatsYearly ?? false,
     isRepeat: fields.isRepeat ?? false,
     personId: fields.personId ?? "person",
-  } as Occurrence;
+  };
 }
 
 const NOW = new Date("2026-08-22T12:00:00+09:00");
