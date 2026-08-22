@@ -1,9 +1,12 @@
 @import "tailwindcss";
 
-/* Soft Clay — the Yaongispace theme.
+/* Soft Clay — the Yaongiworld theme.
    Light only, by decision: no dark mode anywhere (ticket 006).
-   Tokens lifted from prototypes/soft-clay.html so the built app and the
-   prototype cannot drift apart. */
+
+   Tokens are taken from prototypes/soft-clay.html, but *only its light
+   values*: the prototype carries two dark-mode blocks that are deliberately
+   not carried over here. Nothing enforces this — if you sync a token, take
+   it from the prototype's `:root`, never from its dark blocks. */
 @theme {
   /* The warm peach → pink → lilac ground */
   --color-clay-dawn: #fff4e9;
@@ -17,7 +20,7 @@
 
   /* Ink — warm brown, never black */
   --color-clay-ink: #4a3b33;
-  --color-clay-ink-soft: #a2938a;
+  --color-clay-ink-soft: #9a8578;
 
   /* The one saturated accent, used sparingly */
   --color-clay-berry: #ff5c8a;
@@ -39,7 +42,12 @@
     inset 0 -4px 0 rgb(255 255 255 / 0.4);
 
   --font-sans: var(--font-pretendard), system-ui, sans-serif;
-  --font-display: var(--font-jua), var(--font-fredoka), system-ui, sans-serif;
+  /* Jua first for Hangul, then Pretendard — Jua's typeface has no em-dash,
+     en-dash, ellipsis or middle dot, so those characters fall through rather
+     than seaming into system-ui. Fredoka is not in this chain: its Latin
+     would never be reached, because Jua ships Latin glyphs of its own. Use
+     --font-display-latin explicitly for Latin-only headings. */
+  --font-display: var(--font-jua), var(--font-pretendard), system-ui, sans-serif;
   --font-display-latin: var(--font-fredoka), system-ui, sans-serif;
 }
 

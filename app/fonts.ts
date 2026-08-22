@@ -33,17 +33,29 @@ export const jua = localFont({
   weight: "400",
   variable: "--font-jua",
   display: "swap",
-  preload: true,
+  // Not preloaded: a display face below the fold. `swap` renders it when it
+  // arrives, which on a phone-first app beats 355KB of blocking preload.
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
 });
 
-/** Display face for Latin headings. Variable (weight + width). */
+/**
+ * Display face for Latin headings. Variable (weight + width).
+ *
+ * ADR-0007 permits Latin-only faces to use the Google loader — this one is
+ * self-hosted anyway, deliberately: it keeps the app from making a request to
+ * fonts.gstatic.com on every visit, which *privacy by default* argues for, and
+ * it means every face the app uses is served from one place with its licence
+ * beside it. Cost: 63KB in the repo. The CJK reasoning above does not apply
+ * here.
+ */
 export const fredoka = localFont({
   src: "../public/fonts/Fredoka.subset.woff2",
   weight: "300 600",
   variable: "--font-fredoka",
   display: "swap",
-  preload: true,
+  // Not preloaded, as above.
+  preload: false,
   fallback: ["system-ui", "sans-serif"],
 });
 
