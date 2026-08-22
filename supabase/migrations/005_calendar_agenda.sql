@@ -305,7 +305,15 @@ create view imminent_event as
          o.title,
          o.description,
          o.occurs_at,
-         o.occurred_at,
+         -- Named `stored_on` rather than `occurred_at`, for two reasons that
+         -- happen to agree. It is the more honest word — in this view it means
+         -- "the date the row was filed under", and the date this occurrence
+         -- actually happens is `occurs_at` beside it. And `occurred_at` is a
+         -- load-bearing name in this schema: a test asserts exactly which
+         -- things carry one, because it is the primary time axis and a stray
+         -- one is how the axis gets quietly forked. A derived view should not
+         -- be answering that question at all.
+         o.occurred_at   as stored_on,
          o.all_day,
          o.repeats_yearly,
          o.is_repeat,

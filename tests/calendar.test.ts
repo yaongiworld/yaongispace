@@ -457,6 +457,26 @@ describe("an imminent Event is visible to News", () => {
     expect(rows[0].is_repeat).toBe(true);
   });
 
+  test("carries the original date under a name that is not occurred_at", async () => {
+    // `occurred_at` is the primary time axis and a schema test asserts exactly
+    // which things carry one — a derived view must not answer that question.
+    // The date is still there, as `stored_on`, which is the truer word for it.
+    const soon = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const id = await anEvent({ title: "곧", occurredAt: soon });
+
+    const { rows } = await db.query<{ stored_on: Date; occurs_at: Date }>(
+      "SELECT stored_on, occurs_at FROM imminent_event WHERE event_id = $1",
+      [id],
+    );
+    expect(rows[0].stored_on.toISOString()).toBe(new Date(soon).toISOString());
+
+    const columns = await db.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'imminent_event' AND column_name = 'occurred_at'`,
+    );
+    expect(columns.rows).toHaveLength(0);
+  });
+
   test("carries the Entry id, so News joins the index it already reads", async () => {
     const soon = new Date(Date.now() + 2 * 86_400_000).toISOString();
     const id = await anEvent({ title: "곧", occurredAt: soon });
