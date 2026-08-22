@@ -3,7 +3,7 @@ id: 006
 title: What does bubbly and fun actually look like?
 label: wayfinder:prototype
 status: open
-assignee:
+assignee: session-2026-08-22-e
 blocked-by: []
 ---
 
