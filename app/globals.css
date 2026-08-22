@@ -79,3 +79,95 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ---------------------------------------------------------------------------
+   The hero cat (ticket 06)
+
+   **CSS 3D transforms, not WebGL** (ADR-0008). Measured, not assumed: at 132px
+   on a phone the three.js version was indistinguishable from this and cost
+   ~600KB plus a measurably warmer battery. These keyframes are carried over
+   from `prototypes/cat-dimension.html`, option B — a perspective tilt on the
+   idle bob and a full spin on tap.
+
+   3D is confined to the home page. Nothing else in the app tilts, and the
+   `perspective` that makes these work is set on the cat's own container in
+   `app/Yaongi.tsx` rather than globally.
+
+   Kept here rather than in the component because Tailwind 4 has no ergonomic
+   place for multi-step keyframes and an inline `<style>` in a client component
+   would ship the same bytes with worse caching.
+   --------------------------------------------------------------------------- */
+
+.yaongi {
+  display: block;
+  transform-style: preserve-3d;
+  animation: yaongi-bob 4.4s ease-in-out infinite;
+}
+
+/* The slow idle bob. Slow is the point — a fast one reads as anxious, and this
+   is the first thing seen every time the app opens. */
+@keyframes yaongi-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotateY(-17deg) rotateX(7deg);
+  }
+  50% {
+    transform: translateY(-13px) rotateY(17deg) rotateX(-5deg);
+  }
+}
+
+/* The reaction, which does more emotional work than the rendering ever did. */
+.yaongi-poke {
+  animation: yaongi-spin 0.85s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+@keyframes yaongi-spin {
+  0% {
+    transform: rotateY(0) scale(1);
+  }
+  30% {
+    transform: rotateY(120deg) scale(1.18, 0.86);
+  }
+  60% {
+    transform: rotateY(240deg) scale(0.94, 1.08);
+  }
+  100% {
+    transform: rotateY(360deg) scale(1);
+  }
+}
+
+.yaongi-sparkle {
+  opacity: 0;
+  animation: yaongi-sparkle 0.95s ease-out forwards;
+}
+
+@keyframes yaongi-sparkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(0);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.15) translateY(-22px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85) translateY(-52px);
+  }
+}
+
+/* Degrades to a still image, which ADR-0008 lists as one of the reasons this
+   approach won. The cat is still there and still swaps moods; it simply holds
+   still. Nothing on this page conveys meaning through motion alone. */
+@media (prefers-reduced-motion: reduce) {
+  .yaongi,
+  .yaongi-poke,
+  .yaongi-sparkle {
+    animation: none;
+  }
+  /* Without the bob there is no tilt either, so square it up rather than
+     leaving it frozen mid-turn. */
+  .yaongi {
+    transform: none;
+  }
+}
