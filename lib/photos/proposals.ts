@@ -92,11 +92,18 @@ export async function placesNear(
     /* ~2km at Korean latitudes. Wide enough to catch the same building from
        across the street, narrow enough not to offer the whole neighbourhood. */
     const box = 0.02;
+    /* The casts are load-bearing, not decoration. Postgres infers a parameter's
+       type from its context, and `$1 - $3` gives it none — both sides are
+       unknown, and it fails with "operator is not unique" rather than guessing.
+       Saying `double precision` once fixes every use of them below. */
     const { rows } = await client.query<NearbyPlace>(
       `SELECT id, name FROM place
-        WHERE latitude BETWEEN $1 - $3 AND $1 + $3
-          AND longitude BETWEEN $2 - $3 AND $2 + $3
-        ORDER BY abs(latitude - $1) + abs(longitude - $2)
+        WHERE latitude BETWEEN $1::double precision - $3::double precision
+                           AND $1::double precision + $3::double precision
+          AND longitude BETWEEN $2::double precision - $3::double precision
+                            AND $2::double precision + $3::double precision
+        ORDER BY abs(latitude - $1::double precision)
+               + abs(longitude - $2::double precision)
         LIMIT 5`,
       [latitude, longitude, box],
     );
