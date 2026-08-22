@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { asPerson } from "@/lib/as-person";
-import { currentPersonId } from "@/lib/photos/session";
+import { currentPersonId } from "@/lib/auth/current-person";
 import { completeUpload } from "@/lib/photos/import";
 import { photoStorage } from "@/lib/photos";
 

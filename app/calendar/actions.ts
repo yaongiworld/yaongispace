@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { SESSION_COOKIE, readSessionValue } from "@/lib/auth/session";
+import { currentPersonId } from "@/lib/auth/current-person";
 import { seoulParts } from "@/lib/calendar/dates";
 import { createEvent, deleteEvent, updateEvent } from "@/lib/calendar/events";
 
@@ -22,8 +21,7 @@ import { createEvent, deleteEvent, updateEvent } from "@/lib/calendar/events";
 
 /** The signed-in Person, or a refusal. Every action starts here. */
 async function requirePerson(): Promise<string> {
-  const jar = await cookies();
-  const personId = readSessionValue(jar.get(SESSION_COOKIE)?.value);
+  const personId = await currentPersonId();
   if (!personId) {
     // Not an expected outcome on this page — the tab bar is behind sign-in —
     // so a throw is right. A refusal has its own page at the front door.

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentPersonId } from "@/lib/photos/session";
+import { currentPersonId } from "@/lib/auth/current-person";
 import { acceptProposal, dismissProposal } from "@/lib/photos/proposals";
 
 /**

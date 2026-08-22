@@ -1,6 +1,6 @@
 import { SectionPage } from "../../SectionPage";
 import { ProposalQueue } from "./ProposalQueue";
-import { currentPersonId } from "@/lib/photos/session";
+import { currentPersonId } from "@/lib/auth/current-person";
 import { openProposals, type OpenProposal } from "@/lib/photos/proposals";
 
 /**

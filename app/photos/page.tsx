@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SectionPage } from "../SectionPage";
 import { ServiceWorker } from "./ServiceWorker";
-import { currentPersonId } from "@/lib/photos/session";
+import { currentPersonId } from "@/lib/auth/current-person";
 import { browse, openProposalCount, pendingCount, type BrowsePhoto } from "@/lib/photos/browse";
 
 /**
