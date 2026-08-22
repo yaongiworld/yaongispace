@@ -14,11 +14,16 @@ services:
     image: supabase/postgres:15.8.1.060
     environment:
       POSTGRES_PASSWORD: yaongi
-      POSTGRES_DB: yaongispace_test
+      # Deliberately no POSTGRES_DB. This image's entrypoint creates that
+      # database as `supabase_admin` (a superuser this compose file has no
+      # password for), leaving `postgres` — the role the tests connect as —
+      # unable to so much as CREATE TABLE in it. The stock `postgres` database
+      # is owned by `postgres`, so migrations apply as they would on hosted
+      # Supabase. The container is disposable either way.
     ports:
       - "54329:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d yaongispace_test"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 2s
       timeout: 3s
       retries: 45
