@@ -13,6 +13,11 @@ This repo currently holds **no application code by design**. It is being planned
 `/wayfinder` — the map lives at `.wayfinder/map.md` and its tickets in
 `.wayfinder/tickets/`.
 
+**Read [`CONTEXT.md`](./CONTEXT.md) before writing or discussing anything** — it is the
+shared vocabulary (Entry, Place, Visit, Journey, Letter, Note…) and using different
+words for these things is how the model rots. Architectural decisions live in
+[`docs/adr/`](./docs/adr/).
+
 **Before doing anything here, read the map.** It records what has been decided, what is
 still open, and what has been consciously ruled out of scope. Resolve one ticket per
 session; take the first unblocked, unclaimed one unless told otherwise.
@@ -30,6 +35,10 @@ session; take the first unblocked, unclaimed one unless told otherwise.
 - **Photos are imported, not synced** — Google killed the library-read scopes in 2025.
 - **Two OAuth postures**: calendar needs verification to escape 7-day token expiry;
   photos must stay unverified to avoid a $500–$75k/yr CASA assessment.
+- **Domain model**: entities are Person, Letter, Photo, Place, Visit, Journey, Event,
+  Note, unified by a derived **Entry** index that makes recall possible. `occurred_at`
+  (when it happened) is the primary time axis, not `created_at`. A wished-for
+  destination is a Place with no Visit — there is no status flag.
 
 ## Constraint worth remembering
 

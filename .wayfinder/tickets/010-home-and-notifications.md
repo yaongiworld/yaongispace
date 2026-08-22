@@ -4,7 +4,7 @@ title: What greets you when you open the app?
 label: wayfinder:grilling
 status: open
 assignee:
-blocked-by: [003, 006]
+blocked-by: [006, 014]
 ---
 
 ## Question
@@ -24,4 +24,8 @@ destinations, updates) and shortcut navigation to every section.
   two-person app on a quiet Tuesday, and it should still feel warm.
 - Where the 3D moment sits without crowding the content.
 
-Blocked on the data model (notifications derive from what exists) and look-and-feel.
+**Note**: the notification *model* moved to its own ticket (014) once the Entry index
+made it specifiable. This ticket consumes that decision and focuses on the home page as
+an experience — what greets you, how you navigate, what the empty state feels like.
+
+Blocked on look-and-feel and the notification model.

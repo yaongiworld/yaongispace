@@ -53,18 +53,27 @@ reads across. **No app code ships from this effort.**
   sensitive-scope verification (3–5 days, no CASA, achievable). Consequence: the app runs
   **two OAuth postures** — calendar verified in Production, photos unverified in Testing.
 
+- [The shared data model — what is a memory, a place, a letter?](tickets/003-shared-data-model.md) —
+  Entities: Person, Letter, Photo, Place, Visit, Journey, Event, Note. Unified by a
+  **derived Entry index** (kind, title, body, `occurred_at`, place, person, journey,
+  source pointer) rather than a polymorphic table — see
+  [ADR-0001](../docs/adr/0001-entry-index-over-polymorphic-table.md). **`occurred_at` is
+  the primary time axis** everywhere. **A wished-for destination is a Place with no
+  Visit** — no status flag ([ADR-0002](../docs/adr/0002-place-and-visit-are-separate.md)).
+  Journey groups a trip, travel-only. Person is thin (2 rows, no contact data) as a seam
+  to future SNS. Fully shared ownership, no permissions. Vocabulary in
+  [`CONTEXT.md`](../CONTEXT.md) — the unifier is **Entry**, never "moment" (taken by LLC).
+
 ## Not yet specified
 
 <!-- in-scope fog: real questions not yet sharp enough to ticket -->
 
-- **Notification model for the home page.** What generates a notification, how "read"
-  is tracked, whether anything is pushed to the phone. Blocked on the data model —
-  once sections' shapes are settled, this sharpens fast.
 - **Photo organization beyond storage.** Albums vs. timeline vs. auto-grouping by
   place/date, and whether faces/search matter. Now unblocked in principle — photos
   arrive by import — but wants the import experience settled first.
-- **Chat agent retrieval mechanics.** Embeddings vs. keyword vs. structured query over
-  the sections; model choice; cost. Blocked on the KB architecture ticket.
+- **Recall mechanics.** Embeddings vs. full-text vs. structured query over the Entry
+  index; model choice; cost. Now sharper — it is retrieval over one index, not six
+  tables — but still belongs to the KB architecture ticket.
 - **Letters as an experience.** Whether letters are plain text or have paper/stamp/seal
   texture, whether they can be scheduled or sealed until a date. Wants a prototype.
 - **Offline behaviour.** How much works on a phone with no signal.
