@@ -135,11 +135,31 @@ describe("the PWA manifest", () => {
     expect(m.background_color).toBe("#fff4e9");
   });
 
-  it("does not declare a share target yet — that is ticket 08", () => {
-    // Declaring one before /photos/import exists would put Yaongispace in the
-    // phone's share sheet and then fail when chosen. When ticket 08 lands it
-    // should replace this with a positive assertion.
-    expect(m).not.toHaveProperty("share_target");
+  it("declares a share target, so photos arrive from the phone's photo app", () => {
+    // Ticket 04 asserted this was *absent*, because a target pointing at a
+    // route that does not exist appears in the share sheet and then fails when
+    // chosen. Ticket 08 built `/photos/import`, so the assertion flips rather
+    // than being deleted — what it guards is unchanged: the target and the
+    // route it names must agree.
+    const target = (m as unknown as { share_target?: Record<string, unknown> })
+      .share_target;
+    expect(target).toBeDefined();
+
+    // Files need a POST with multipart/form-data. A GET share target can carry
+    // a title and a URL, but not bytes.
+    expect(target?.method).toBe("POST");
+    expect(target?.enctype).toBe("multipart/form-data");
+
+    const params = target?.params as { files?: { name: string; accept: string[] }[] };
+    expect(params.files?.[0].accept).toContain("image/*");
+  });
+
+  it("points the share target at a route that exists, so the share sheet cannot 404", () => {
+    // The same guard the tab bar gets, for the same reason — and the specific
+    // failure ticket 04 was avoiding by leaving this out.
+    const target = (m as unknown as { share_target?: { action?: string } }).share_target;
+    const action = target?.action ?? "";
+    expect(existsSync(join(appDir, action.replace(/^\//, ""), "route.ts"))).toBe(true);
   });
 });
 

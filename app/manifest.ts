@@ -19,27 +19,44 @@ import { SECTIONS } from "./sections";
  * or the icon in this file only is a real and easy mistake: it will look
  * correct on Android and silently stay stale on Yangcho's iPhone.
  *
- * ## Ticket 08 — the share target
+ * ## The share target (ticket 08)
  *
- * Ticket 08 declares a share target so photos can be shared into Yaongispace
- * from the phone's photo app. It belongs here, and it is deliberately a small
- * addition: append a `share_target` key to the returned object. Roughly
+ * `share_target` is what puts Yaongispace in the phone's share sheet, so photos
+ * arrive from the photo app rather than through a file picker. Ticket 04
+ * deliberately left it out — a target pointing at a route that does not exist
+ * appears in the sheet and then fails — and ticket 08 adds it now that
+ * `/photos/import` is real.
  *
- *     share_target: {
- *       action: "/photos/import",
- *       method: "POST",
- *       enctype: "multipart/form-data",
- *       params: { files: [{ name: "photos", accept: ["image/*"] }] },
- *     }
+ * `MetadataRoute.Manifest` does not type it: `share_target` is a Chromium
+ * extension rather than part of the W3C manifest, so the return type is widened
+ * by intersection below. The typed manifest is kept for everything else rather
+ * than abandoned for a static JSON file to dodge one key.
  *
- * Note `MetadataRoute.Manifest` may not type `share_target` — it is a Chromium
- * extension to the spec rather than part of the W3C manifest. If TypeScript
- * rejects it, widen the return type at the boundary; do not abandon the typed
- * manifest for a static JSON file to dodge one key. **Ticket 04 does not build
- * the share target** — the route it points at does not exist yet, and declaring
- * a target that 404s would make the app appear in the share sheet and then fail.
+ * **iOS does not implement share targets at all.** On Yangcho's iPhone photos
+ * arrive through the import page's own file picker instead. That is the reason
+ * `/photos/import` accepts both a POST from the share sheet and a plain visit.
  */
-export default function manifest(): MetadataRoute.Manifest {
+
+/**
+ * The manifest type, widened for the share target Next does not type.
+ *
+ * `method: "POST"` with `enctype: "multipart/form-data"` is what makes files
+ * possible at all — a GET share target can carry a title and a URL but not
+ * bytes. The `files` array being an array is what admits a multi-photo share,
+ * which is the case that matters: 40 photos after a trip, in one go.
+ */
+type ManifestWithShareTarget = MetadataRoute.Manifest & {
+  share_target: {
+    action: string;
+    method: "POST";
+    enctype: "multipart/form-data";
+    params: {
+      files: { name: string; accept: string[] }[];
+    };
+  };
+};
+
+export default function manifest(): ManifestWithShareTarget {
   return {
     name: "야옹이월드",
     /* Shown under the icon on the home screen, where there is room for about
@@ -96,5 +113,17 @@ export default function manifest(): MetadataRoute.Manifest {
       url: s.href,
       icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     })),
+
+    /* Sharing photos into Yaongispace from the phone's photo app.
+       `image/*` rather than a list of types: a phone that invents a new camera
+       format should not silently stop being able to share into the library. */
+    share_target: {
+      action: "/photos/import",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: {
+        files: [{ name: "photos", accept: ["image/*"] }],
+      },
+    },
   };
 }
