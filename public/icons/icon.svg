@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    The Yaongispace home-screen mark.
+
+    Deliberately NOT a cat. The hero yaongi is being commissioned as an original
+    (CLAUDE.md, "No third-party character IP"), and drawing a placeholder cat
+    here would either need replacing the day it lands or, worse, quietly become
+    the app's identity. An abstract Soft Clay mark ages better and commits to
+    nothing: two overlapping hearts in the theme's own palette — two people, one
+    shared space — on the app's own peach-to-lilac ground.
+
+    Original work for this repo. No third-party asset is embedded.
+
+    The full 512 square is painted, with the mark inset to ~66% so the same
+    artwork works as a maskable icon: Android may crop this to a circle or a
+    squircle, and everything outside the centre 80% is expendable.
+  -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff4e9"/>
+      <stop offset="50%" stop-color="#ffe9f0"/>
+      <stop offset="100%" stop-color="#eef1ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- The ground. Edge to edge: a transparent or rounded icon would get a
+       white or black box behind it on one platform or the other. -->
+  <rect width="512" height="512" fill="url(#ground)"/>
+
+  <!-- Two hearts, overlapping. Rose behind, berry in front.
+
+       The palette tokens themselves (clay-rose #ffc9dd over clay-apricot
+       #ffdcc9) were tried first and rendered as a pale blob: both are tints
+       meant to sit *on* the ground as pills and cards, so against that same
+       ground there is almost no contrast, and at 48px on a home screen the two
+       hearts stopped being two. The front heart therefore uses clay-berry —
+       the theme's one saturated accent, "used sparingly", which is exactly what
+       a single app icon is. The rear heart keeps clay-rose but is deepened
+       enough to separate from the ground.
+
+       Centred at y=256, not 268: the heart path is taller below its origin than
+       above, so translating to the true centre pushes the optical mass low. -->
+  <g transform="translate(256 244)">
+    <!-- 양초's heart, offset left -->
+    <g transform="translate(-46 0) rotate(-12)">
+      <path d="M0,96 C-88,36 -116,-8 -116,-46 A56,56 0 0 1 0,-72 A56,56 0 0 1 116,-46 C116,-8 88,36 0,96 Z"
+            fill="#ffa9c9"/>
+    </g>
+    <!-- 토위's heart, offset right, slightly smaller so the pair reads as two
+         distinct shapes rather than one blurred blob at 48px. A thin ground-
+         coloured stroke keeps the two edges apart where they overlap. -->
+    <g transform="translate(46 6) rotate(12) scale(0.88)">
+      <path d="M0,96 C-88,36 -116,-8 -116,-46 A56,56 0 0 1 0,-72 A56,56 0 0 1 116,-46 C116,-8 88,36 0,96 Z"
+            fill="#ff5c8a" stroke="#fff0f4" stroke-width="10"/>
+    </g>
+  </g>
+</svg>

@@ -10,3 +10,6 @@ tsconfig.tsbuildinfo
 
 # Test artifacts
 coverage/
+
+# Agent worktrees — scratch checkouts, never part of the repo
+.claude/worktrees/
