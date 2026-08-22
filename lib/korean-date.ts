@@ -11,21 +11,21 @@
  * Korea, and a server rendering in UTC would otherwise show yesterday's letter
  * as having arrived today — a small wrongness that would be permanent in an
  * archive meant to last decades.
+ *
+ * `koreanDate` itself lives in `lib/calendar/dates.ts` and is re-exported here.
+ * Letters and the calendar were built in parallel and each grew a version —
+ * they agreed in every timezone, but two functions with one name and one job
+ * only stay agreeing by luck. The calendar's is the one kept: it composes
+ * 년/월/일 by hand rather than going through `Intl`, which emits the numeric
+ * "2026. 8. 22." unless coaxed with `dateStyle: "long"` — and that drags in a
+ * weekday on some runtimes. Three numbers cannot drift between Node versions.
  */
 
+import { koreanDate } from "./calendar/dates";
+
+export { koreanDate };
+
 const SEOUL = "Asia/Seoul";
-
-const full = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: SEOUL,
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
-
-/** "2026년 8월 22일" */
-export function koreanDate(date: Date): string {
-  return full.format(date);
-}
 
 /**
  * How long ago, in the words we would use.
