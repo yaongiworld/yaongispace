@@ -33,3 +33,18 @@ horizontal slices, none independently verifiable — you cannot demo "the schema
       RLS is the wall
 - [ ] Integration tests run against real Postgres and **assert RLS actually denies** —
       not that the app avoids asking
+
+---
+
+**Added by [ORCHESTRATION.md](../ORCHESTRATION.md)**: five tickets sit behind this
+one, and three of them (05 letters, 07 calendar, 08 photos) fan out in parallel
+afterwards. That makes one design choice here an orchestration constraint:
+
+**Define one Entry trigger function per source table, not a single dispatcher.**
+A single function switching on kind means three parallel agents rewrite one file
+and collide on every merge. One function per table lets each section add its own
+without touching another's — and it is the same total code.
+
+Migration numbers for the parallel wave are pre-assigned so agents do not pick
+the same one: **05 takes `004`, 07 takes `005`, 08 takes `006`.** Leave `001`–`003`
+for this ticket.
