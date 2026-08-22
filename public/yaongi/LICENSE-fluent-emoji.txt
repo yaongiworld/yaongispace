@@ -1,0 +1,42 @@
+The cat faces in this directory are PLACEHOLDERS.
+
+They are Microsoft's Fluent Emoji 3D, used under the MIT licence below. They
+are glyphs, not a mascot: the real yaongi is being commissioned as an original
+drawing, and when it lands it ships one image per mood in `lib/mood.ts` and
+these files go away. The mood *vocabulary* is the part meant to survive, not
+these drawings.
+
+Two rules for whoever replaces or adds to them:
+
+  * No third-party character IP, ever. This app is meant to be public-able and
+    showable in Yangcho's MBA portfolio, and an asset licensed for private use
+    only would quietly take that away. MIT (Fluent) and Apache-2.0 (Noto) are
+    the licences already cleared for this repo.
+  * A licence file rides along with the asset, as it does for the fonts in
+    `public/fonts` and the icons in `public/icons`.
+
+Source: https://github.com/microsoft/fluentui-emoji
+
+---
+
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
