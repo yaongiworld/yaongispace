@@ -49,6 +49,11 @@
      --font-display-latin explicitly for Latin-only headings. */
   --font-display: var(--font-jua), var(--font-pretendard), system-ui, sans-serif;
   --font-display-latin: var(--font-fredoka), system-ui, sans-serif;
+  /* The hand a Letter's body is written in, and nothing else. Pretendard
+     follows Gaegu rather than system-ui because Gaegu carries only the 2,350
+     common Hangul syllables — a rarer one falls through mid-word, and it
+     should fall through to the face the rest of the app is set in. */
+  --font-letter: var(--font-gaegu), var(--font-pretendard), system-ui, sans-serif;
 }
 
 :root {
