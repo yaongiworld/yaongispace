@@ -11,8 +11,9 @@ and carries no implementation detail.
 **Entry**:
 The shared index over everything in the app. Every Letter, Photo, Place, Visit, Event
 and Note registers one, carrying only what recall needs — what kind of thing it is,
-its text, when it happened, where, and whose. Derived data: rebuildable from the things
-it indexes, never the only copy of anything.
+its text, when it happened, where, and whose — plus an embedding and a Korean-aware
+search index, which is what makes Recall possible. Derived data: rebuildable from the
+things it indexes, never the only copy of anything.
 _Avoid_: Moment (means a trending lifestyle event in the LLC project — never reuse it
 here), Item, Record, Object
 
@@ -58,8 +59,9 @@ both have edit rights to, and is mirrored here.
 _Avoid_: Appointment, meeting, calendar item
 
 **Note**:
-Something written down for ourselves rather than to each other — the knowledge base the
-chat agent draws on. A Letter is addressed; a Note is not.
+Something written down for ourselves rather than to each other — the knowledge base
+Recall draws on. A Letter is addressed; a Note is not. Freeform: a title and a body,
+nothing typed or required.
 _Avoid_: Document, page, entry (Entry means the shared index), memo, KB article
 
 **Person**:
@@ -72,5 +74,13 @@ _Avoid_: User, contact, member, account
 
 **Recall**:
 Answering a question about our own life by reading across Entries — "when did we go to
-Jeju?", "what did Yangcho say about Busan?". Read-only.
-_Avoid_: Search, query, RAG, chat
+Jeju?", "what did Yangcho say about Busan?". Read-only, and **always shows the Entries
+an answer came from**; an answer without its sources is a claim, not a memory. Reads
+photo captions and metadata, never the photographs themselves.
+_Avoid_: Search, query, RAG, chat, assistant
+
+**Under-claiming**:
+What Recall does when it is unsure — offering the Entries it found and saying so, rather
+than composing a confident answer. Preferred always: a shrug is recoverable, a confident
+wrong claim about our shared history is not.
+_Avoid_: Hedging, low confidence, fallback

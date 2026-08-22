@@ -64,6 +64,17 @@ reads across. **No app code ships from this effort.**
   to future SNS. Fully shared ownership, no permissions. Vocabulary in
   [`CONTEXT.md`](../CONTEXT.md) — the unifier is **Entry**, never "moment" (taken by LLC).
 
+- [How does the chat agent know our life?](tickets/004-knowledge-base-architecture.md) —
+  **Recall** is a search box that speaks, not a companion: it surfaces your own Entries
+  and **always shows its sources**, preferring to under-claim. Notes are pure freeform.
+  **Postgres cannot tokenize Korean** — searching "제주" would never match "제주도에서" —
+  so search uses **pgroonga** (the only Korean-capable option on managed Supabase), fused
+  with pgvector via RRF ([ADR-0003](../docs/adr/0003-pgroonga-for-korean-search.md)). No
+  vector index below ~100k rows. **Commercial AI APIs, deliberately** over self-hosting
+  ([ADR-0004](../docs/adr/0004-commercial-ai-apis-over-self-hosting.md)) — a conscious
+  trade against *privacy by default*, with a cheap exit. Reads photo captions, never
+  images. Under $15/month.
+
 ## Not yet specified
 
 <!-- in-scope fog: real questions not yet sharp enough to ticket -->
@@ -71,13 +82,9 @@ reads across. **No app code ships from this effort.**
 - **Photo organization beyond storage.** Albums vs. timeline vs. auto-grouping by
   place/date, and whether faces/search matter. Now unblocked in principle — photos
   arrive by import — but wants the import experience settled first.
-- **Recall mechanics.** Embeddings vs. full-text vs. structured query over the Entry
-  index; model choice; cost. Now sharper — it is retrieval over one index, not six
-  tables — but still belongs to the KB architecture ticket.
 - **Letters as an experience.** Whether letters are plain text or have paper/stamp/seal
   texture, whether they can be scheduled or sealed until a date. Wants a prototype.
 - **Offline behaviour.** How much works on a phone with no signal.
-- **Bilingual strategy.** Whether UI is Korean-first, English-first, or switchable.
 - **Backup and export.** Concrete mechanism honouring *long-lived data* — how the two
   of you get everything out if Supabase or Vercel disappears.
 

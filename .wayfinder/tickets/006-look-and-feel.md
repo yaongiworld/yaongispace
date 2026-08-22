@@ -22,7 +22,10 @@ a phone-sized viewport, and settle:
   delight.
 - The motion vocabulary for 2D (transitions, reactions, loading states) — this carries
   most of the "fun", not the 3D.
-- Korean/English handling in the type system, since both will appear.
+- Korean/English handling in the type system, since both will appear. Note the bilingual
+  strategy ticket (015) owns the language decisions; this ticket owns how Hangul and
+  Latin look good together — they need different line-height and letter-spacing, and a
+  font chosen for Latin alone will render Korean badly.
 
 **Constraint**: zzingni assets are used under private-use-only. This app cannot become
 public, go in an app store, or appear in Yangcho's MBA portfolio while it uses them.

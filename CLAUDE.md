@@ -39,6 +39,12 @@ session; take the first unblocked, unclaimed one unless told otherwise.
   Note, unified by a derived **Entry** index that makes recall possible. `occurred_at`
   (when it happened) is the primary time axis, not `created_at`. A wished-for
   destination is a Place with no Visit — there is no status flag.
+- **Recall** (the chat agent) is a search box that speaks — it surfaces your own Entries
+  and always shows its sources, preferring to under-claim. Never writes Letters.
+- **Search must be Korean-aware**: Postgres cannot tokenize Korean, so we use pgroonga
+  (not `tsvector`) fused with pgvector via RRF. `to_tsvector` on Korean silently fails.
+- **Commercial AI APIs**, chosen deliberately over self-hosting — a conscious trade
+  against *privacy by default*, with a cheap exit if it stops feeling right.
 
 ## Constraint worth remembering
 
