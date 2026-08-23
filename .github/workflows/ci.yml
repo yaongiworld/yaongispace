@@ -1,0 +1,61 @@
+# Tests on every push; migrations on every push to main.
+#
+# The suite needs a real Postgres with pgroonga and pgvector — RLS, Korean
+# tokenization and the Entry triggers are the behaviour under test and all
+# three are invisible to a mock — so CI runs the same Supabase image the
+# docker-compose file does rather than a plain postgres.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: supabase/postgres:15.8.1.060
+        env:
+          POSTGRES_PASSWORD: yaongi
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx next build
+        env:
+          # The build reads it for metadataBase; any absolute URL will do here.
+          NEXT_PUBLIC_SITE_URL: https://yaongiworld.com
+
+  # Applies pending migrations to production, before Vercel serves the new code.
+  # Idempotent: it skips anything already in schema_migrations, so a push that
+  # adds no migration does nothing.
+  migrate:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run migrate
+        env:
+          # The *direct* connection (port 5432), not the pooler: DDL in a
+          # transaction is not what a transaction-mode pooler is for.
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}

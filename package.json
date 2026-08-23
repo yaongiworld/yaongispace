@@ -12,6 +12,7 @@
     "app:up": "docker compose -p yaongi-app --env-file .env.local -f compose.app.yml up -d --build --wait",
     "app:down": "docker compose -p yaongi-app --env-file .env.local -f compose.app.yml down",
     "app:logs": "docker compose -p yaongi-app --env-file .env.local -f compose.app.yml logs -f app",
+    "migrate": "node scripts/migrate.mjs",
     "seed:dev": "DATABASE_URL=postgresql://postgres:yaongi@127.0.0.1:54330/postgres node scripts/seed-dev.mjs",
     "db:up": "docker compose --env-file .env.example up -d --wait",
     "db:down": "docker compose --env-file .env.example down -v"
