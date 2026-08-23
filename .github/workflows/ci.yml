@@ -1,9 +1,12 @@
 # Tests on every push; migrations on every push to main.
 #
-# The suite needs a real Postgres with pgroonga and pgvector — RLS, Korean
-# tokenization and the Entry triggers are the behaviour under test and all
-# three are invisible to a mock — so CI runs the same Supabase image the
-# docker-compose file does rather than a plain postgres.
+# The suite needs a real Postgres — RLS, Korean search and the Entry triggers
+# are the behaviour under test and all three are invisible to a mock.
+#
+# The image is `pgvector/pgvector`, deliberately *not* Supabase's: it has
+# pgvector and pg_trgm and no pgroonga, which is the shape of the cheapest
+# hosts. So a green CI is evidence the app still runs on a free Postgres,
+# rather than evidence it runs on the one that costs $25/month.
 name: ci
 
 on:
@@ -16,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: supabase/postgres:15.8.1.060
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_PASSWORD: yaongi
         ports:

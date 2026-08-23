@@ -125,7 +125,7 @@ services:
     restart: "no"
 
   db:
-    image: supabase/postgres:15.8.1.060
+    image: pgvector/pgvector:pg15
     environment:
       POSTGRES_PASSWORD: yaongi
     ports:

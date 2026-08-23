@@ -508,7 +508,7 @@ describe("a Photo's Entry", () => {
     expect(rows[0].person_id).toBe(towee);
   });
 
-  test("makes the caption findable in Korean, which is why pgroonga is here", async () => {
+  test("makes the caption findable in Korean, which tsvector could not do", async () => {
     // `to_tsvector` treats 제주도에서 as one token and never matches 제주 —
     // silently, and it looks fine in English testing (ADR-0003).
     await db.query(
@@ -518,7 +518,7 @@ describe("a Photo's Entry", () => {
     );
 
     const { rows } = await db.query<{ n: string }>(
-      "SELECT count(*) AS n FROM entry WHERE kind = 'photo' AND text &@ '제주'",
+      "SELECT count(*) AS n FROM entry WHERE kind = 'photo' AND text ILIKE '%제주%'",
     );
     expect(Number(rows[0].n)).toBe(1);
   });

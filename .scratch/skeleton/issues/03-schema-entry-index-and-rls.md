@@ -27,7 +27,7 @@ horizontal slices, none independently verifiable — you cannot demo "the schema
       test proves the rebuild is **lossless** — this is the safe-repair property
 - [ ] **pgroonga** indexes Entry text, not `tsvector`: a test proves searching `제주`
       matches `제주도에서`, which `to_tsvector` silently fails
-      ([ADR-0003](../../../docs/adr/0003-pgroonga-for-korean-search.md))
+      ([ADR-0003](../../../docs/adr/0003-korean-aware-search.md))
 - [ ] pgvector column exists; **no vector index yet** (unwarranted below ~100k rows)
 - [ ] **RLS on every table**, keyed to the signed-in Person. The allowlist is the door;
       RLS is the wall

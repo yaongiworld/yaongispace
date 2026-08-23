@@ -145,7 +145,7 @@ describe("봉하기 — writing and sealing a Letter", () => {
     expect(id).toBeTruthy();
   });
 
-  test("a Letter is findable by Korean search, which is why this is pgroonga", async () => {
+  test("a Letter is findable by Korean search, which tsvector could not do", async () => {
     await letterExists({
       author: towee,
       recipient: yangcho,
@@ -158,7 +158,7 @@ describe("봉하기 — writing and sealing a Letter", () => {
       // `to_tsvector` treats the run as one token, so this silently finds
       // nothing without pgroonga (ADR-0003).
       const { rows } = await db.query<{ n: string }>(
-        "SELECT count(*) AS n FROM entry WHERE kind = 'letter' AND text &@~ '제주'",
+        "SELECT count(*) AS n FROM entry WHERE kind = 'letter' AND text ILIKE '%제주%'",
       );
       expect(Number(rows[0].n)).toBe(1);
     });

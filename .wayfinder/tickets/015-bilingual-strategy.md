@@ -59,7 +59,7 @@ never assumes one language per person or per entry.
 
 Mixed content is the normal case — a Korean letter with an English title, a note that
 code-switches mid-sentence. This lands hardest on **search**: pgroonga segments Korean
-([ADR-0003](../../docs/adr/0003-pgroonga-for-korean-search.md)) and a code-switched
+([ADR-0003](../../docs/adr/0003-korean-aware-search.md)) and a code-switched
 sentence needs both languages handled in one field. Tagging an Entry `ko` or `en` would be
 wrong for most real content and would tempt a later session to filter or branch on it.
 

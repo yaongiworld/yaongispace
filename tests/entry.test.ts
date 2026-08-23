@@ -211,8 +211,12 @@ test("no vector index exists yet", async () => {
   );
   const defs = rows.map((r) => r.indexdef).join("\n");
   expect(defs).not.toMatch(/ivfflat|hnsw/i);
-  // But pgroonga is indexing the text, which is the half that must exist.
-  expect(defs).toMatch(/pgroonga/i);
+  // But the text is indexed for the lexical half of recall, which must exist.
+  // Trigram rather than pgroonga: pgroonga is the better tool and exists on
+  // Supabase alone, which would make the cheapest viable host a $25/month plan
+  // bought for one extension. This accepts pgroonga's index either, so a host
+  // that has it can add it without this failing.
+  expect(defs).toMatch(/gin_trgm_ops|pgroonga/i);
 });
 
 test("searching 제주 matches 제주도에서, which to_tsvector cannot", async () => {
@@ -227,7 +231,8 @@ test("searching 제주 matches 제주도에서, which to_tsvector cannot", async
   );
 
   const found = await db.query<{ n: string }>(
-    "SELECT count(*) AS n FROM entry WHERE text &@~ '제주'",
+    "SELECT count(*) AS n FROM entry WHERE text ILIKE '%' || $1 || '%'",
+    ["제주"],
   );
   expect(Number(found.rows[0].n)).toBe(1);
 
@@ -246,7 +251,7 @@ test("one search path covers Korean and English, including a code-switched sente
 
   for (const term of ["Busan", "밀면", "맛있"]) {
     const { rows } = await db.query<{ n: string }>(
-      "SELECT count(*) AS n FROM entry WHERE text &@~ $1",
+      "SELECT count(*) AS n FROM entry WHERE text ILIKE '%' || $1 || '%'",
       [term],
     );
     expect(Number(rows[0].n), `searching ${term}`).toBe(1);

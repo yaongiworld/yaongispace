@@ -70,7 +70,7 @@ reads across. **No app code ships from this effort.**
   and **always shows its sources**, preferring to under-claim. Notes are pure freeform.
   **Postgres cannot tokenize Korean** — searching "제주" would never match "제주도에서" —
   so search uses **pgroonga** (the only Korean-capable option on managed Supabase), fused
-  with pgvector via RRF ([ADR-0003](../docs/adr/0003-pgroonga-for-korean-search.md)). No
+  with pgvector via RRF ([ADR-0003](../docs/adr/0003-korean-aware-search.md)). No
   vector index below ~100k rows. **Commercial AI APIs, deliberately** over self-hosting
   ([ADR-0004](../docs/adr/0004-commercial-ai-apis-over-self-hosting.md)) — a conscious
   trade against *privacy by default*, with a cheap exit. Reads photo captions, never

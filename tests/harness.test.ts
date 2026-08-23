@@ -26,27 +26,34 @@ test("the test database is reachable", async () => {
   expect(rows[0].ok).toBe(1);
 });
 
-test("pgroonga and pgvector are available", async () => {
+test("pg_trgm and pgvector are available", async () => {
+  // The two the app actually requires. Deliberately *not* pgroonga: it does
+  // better Korean segmentation but exists on Supabase and almost nowhere else,
+  // so requiring it here would mean the test suite only passes on hosts that
+  // cost $25/month. Both of these ship with stock Postgres.
   const { rows } = await db.query<{ name: string }>(
     `SELECT name FROM pg_available_extensions
-     WHERE name IN ('pgroonga', 'vector') ORDER BY name`,
+     WHERE name IN ('pg_trgm', 'vector') ORDER BY name`,
   );
-  expect(rows.map((r) => r.name)).toEqual(["pgroonga", "vector"]);
+  expect(rows.map((r) => r.name)).toEqual(["pg_trgm", "vector"]);
 });
 
-test("pgroonga segments Korean where to_tsvector cannot", async () => {
+test("trigram search finds Korean where to_tsvector cannot", async () => {
   // The concrete failure ADR-0003 exists to prevent: Korean is agglutinative,
   // so 제주 (Jeju) appears inside 제주도에서 (in Jeju island). Postgres has no
   // Korean text search configuration and would silently find nothing.
-  await db.query("CREATE EXTENSION IF NOT EXISTS pgroonga");
+  //
+  // Trigrams have no notion of a word, which is exactly why they survive here:
+  // the trigrams of 제주도에서 include those of 제주.
+  await db.query("CREATE EXTENSION IF NOT EXISTS pg_trgm");
   await db.query("CREATE TEMP TABLE probe (body text)");
-  await db.query("CREATE INDEX probe_idx ON probe USING pgroonga (body)");
+  await db.query("CREATE INDEX probe_idx ON probe USING gin (body gin_trgm_ops)");
   await db.query("INSERT INTO probe VALUES ('제주도에서 좋은 하루를 보냈어요')");
 
-  const pgroonga = await db.query<{ n: string }>(
-    "SELECT count(*) AS n FROM probe WHERE body &@~ '제주'",
+  const trigram = await db.query<{ n: string }>(
+    "SELECT count(*) AS n FROM probe WHERE body ILIKE '%제주%'",
   );
-  expect(Number(pgroonga.rows[0].n)).toBe(1);
+  expect(Number(trigram.rows[0].n)).toBe(1);
 
   const tsvector = await db.query<{ n: string }>(
     "SELECT count(*) AS n FROM probe WHERE to_tsvector(body) @@ to_tsquery('제주')",

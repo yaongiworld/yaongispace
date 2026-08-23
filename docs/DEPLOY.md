@@ -1,51 +1,55 @@
 # Deploying Yaongispace
 
-Vercel for the app, Supabase for Postgres and auth, Cloudflare R2 for photo
-bytes — settled in [ticket 011](../.wayfinder/tickets/011-hosting-and-storage.md)
-and [ADR-0012](adr/0012-r2-for-photo-storage.md). This is the *how*.
+Vercel for the app, **Neon** for Postgres, Cloudflare R2 for photo bytes —
+hosting settled in [ticket 011](../.wayfinder/tickets/011-hosting-and-storage.md),
+storage in [ADR-0012](adr/0012-r2-for-photo-storage.md). This is the *how*.
 
 Domain: **yaongiworld.com**.
 
-Roughly $25/month for Supabase Pro plus ~$7 at 500GB of photos. Vercel's free
-tier covers two people.
+**Roughly $1–2/month**, all of it R2 at curated photo volume. Vercel's free tier
+covers two people and Neon's free tier covers a two-person database.
+
+That was $26.50 until the search change: the app needs no Supabase SDK — it
+talks to Postgres through plain `pg` — so **pgroonga was the only thing tying it
+to a $25/month plan**, and [ADR-0003](adr/0003-korean-aware-search.md) now uses
+`pg_trgm`, which ships with every Postgres. Any Postgres with `pgvector` works:
+Neon, Supabase, Naver Cloud, or your own.
 
 ## Order matters
 
 Each step needs a value from the one before it. Doing them out of order mostly
 works and then fails at sign-in with nothing in the logs.
 
-### 1. Supabase — Postgres and auth
+### 1. Neon — Postgres
 
-Create a project in **ap-northeast-2 (Seoul)**; both of you are in Korea and it
-is the difference between a snappy app and a sluggish one.
+Create a project in **AWS ap-northeast-2 (Seoul)**; both of you are in Korea and
+it is the difference between a snappy app and a sluggish one.
 
-**Pro plan is required, not a preference.** Two reasons, either sufficient:
+The free tier is enough: 0.5GB, which is thousands of letters, photo metadata
+and Entries — the photo *bytes* live in R2, not here. It scales to zero when
+idle, so the first request after a quiet spell takes a second or so.
 
-- **pgroonga is not available on the free tier.** Postgres cannot tokenize
-  Korean — `to_tsvector` on 제주도에서 silently matches nothing — so Recall and
-  every Korean search depend on it ([ADR-0003](adr/0003-pgroonga-for-korean-search.md)).
-- The free tier **pauses after a week of inactivity**. For an app opened a few
-  times a week that is a cold start every visit.
+The migrations create the two extensions they need (`pg_trgm`, `vector`), both
+of which Neon has, so there is nothing to run by hand.
 
-Then, in the SQL editor:
+Take **two** connection strings from the dashboard:
 
-```sql
-create extension if not exists pgroonga;
-create extension if not exists vector;
-```
-
-Take **two** connection strings from Project Settings → Database:
-
-| | Port | Used by |
+| | Which | Used by |
 |---|---|---|
-| Pooler (transaction mode) | 6543 | the app — `DATABASE_URL` |
-| Direct | 5432 | migrations — `MIGRATION_DATABASE_URL` |
+| Pooled | the `-pooler` host | the app — `DATABASE_URL` |
+| Direct | the plain host | migrations — `MIGRATION_DATABASE_URL` |
 
 **This distinction is load-bearing.** `lib/db.ts` opens a raw `pg` Pool, and on
-Vercel every serverless instance opens its own — Supabase's direct connection
-limit is low enough that the app will exhaust it the first time both of you use
-it at once. Migrations need the opposite: DDL inside a transaction is not what a
+Vercel every serverless instance opens its own — the direct connection limit is
+low enough that the app will exhaust it the first time both of you use it at
+once. Migrations need the opposite: DDL inside a transaction is not what a
 transaction-mode pooler is for.
+
+**If you would rather pay for managed backups**, Supabase Pro ($25/mo) works
+identically — same connection strings, same migrations, and it additionally has
+pgroonga, which would let you take the search upgrade in
+[ADR-0003](adr/0003-korean-aware-search.md). Nothing in the app changes either
+way.
 
 ### 2. Cloudflare R2 — photo bytes
 
@@ -116,7 +120,7 @@ Add the domain under Settings → Domains and point DNS at Vercel.
 
 Repository → Settings → Secrets → Actions:
 
-- `MIGRATION_DATABASE_URL` — the **direct** connection string, port 5432
+- `MIGRATION_DATABASE_URL` — the **direct** connection string (not the pooled one)
 
 `.github/workflows/ci.yml` then applies pending migrations on every push to
 `main`, before the new code serves. It is idempotent: already-applied files are
@@ -162,7 +166,8 @@ looks identical to not being invited.
 3. **Import a photo** from a phone's share sheet. If it fails in the browser but
    the server logs are clean, it is CORS on the bucket.
 4. **Search Korean** — a partial word like 제주 against a letter containing
-   제주도에서. If it finds nothing, pgroonga is missing.
+   제주도에서. If it finds nothing, the trigram index did not get created; check
+   that `create extension pg_trgm` succeeded in migration 003.
 
 ## Known gaps that reach production
 

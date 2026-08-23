@@ -28,7 +28,26 @@
 -- adding two functions touch two disjoint regions of the file.
 -- ============================================================================
 
-create extension if not exists pgroonga;
+-- Trigram matching, for the lexical half of recall.
+--
+-- **Not pgroonga**, though pgroonga is the better tool. Postgres cannot
+-- tokenize Korean at all — see the note on the search indexes below — so
+-- *something* other than `tsvector` is required. pgroonga does proper
+-- morpheme segmentation, but it is available on Supabase and essentially
+-- nowhere else: not Neon, not Naver Cloud, not a stock Postgres. Requiring it
+-- makes the cheapest viable host a $25/month plan, bought for one extension.
+--
+-- `pg_trgm` ships with every Postgres. It is Hangul-safe — a trigram of
+-- 제주도에서 contains 제주 — so searching 제주 matches, which is the failure
+-- that actually matters. What it gives up is morpheme boundaries (a trigram
+-- can straddle two words and match something meaningless) and pgroonga's
+-- ranking. At two people's volume that is a modest quality difference rather
+-- than the silent total failure `tsvector` produces.
+--
+-- The upgrade path stays open and costs nothing: on a host that has pgroonga,
+-- `create extension pgroonga` plus two indexes alongside these. Nothing else
+-- changes, because retrieval is hybrid either way.
+create extension if not exists pg_trgm;
 create extension if not exists vector;
 
 -- ---------------------------------------------------------------------------
@@ -80,14 +99,20 @@ create table entry (
   unique (kind, source_id)
 );
 
--- Korean-aware search, and the reason this is pgroonga and not tsvector.
+-- Korean-aware search, and the reason this is a trigram index rather than
+-- `tsvector`.
+--
 -- Postgres has no Korean configuration and treats a run of CJK as one token,
 -- so `to_tsvector('제주도에서')` produces a single token and searching 제주
 -- never matches it — silently, while looking correct in English testing
--- (ADR-0003). pgroonga segments properly and indexes English in the same
--- index, so there is one search path rather than two.
-create index entry_text_idx on entry using pgroonga (text);
-create index entry_title_idx on entry using pgroonga (title);
+-- (ADR-0003). Korean is agglutinative: particles attach directly to nouns, so
+-- this breaks most Korean content rather than an edge case.
+--
+-- GIN over trigrams makes `text ilike '%제주%'` an index scan instead of a
+-- sequential one, and trigrams have no opinion about word boundaries, which is
+-- exactly why they survive Korean where the tokenizer does not.
+create index entry_text_idx on entry using gin (text gin_trgm_ops);
+create index entry_title_idx on entry using gin (title gin_trgm_ops);
 
 create index entry_occurred_idx on entry (occurred_at desc);
 create index entry_created_idx on entry (created_at desc);

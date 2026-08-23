@@ -3,15 +3,15 @@
 # RLS policies, pgroonga's Korean tokenization and the Entry triggers *are*
 # the behaviour under test, and all three are invisible to a mock.
 #
-# The image is Supabase's own, not a plain postgres — it carries both
-# extensions the app depends on at the versions production runs:
-#   - pgroonga, because to_tsvector silently fails on Korean (ADR-0003):
-#     searching 제주 never matches 제주도에서, and it ships looking fine.
-#   - pgvector, for the embedding column the Entry index carries.
-# Testing against a database that lacks them would prove nothing.
+# The image carries pgvector and pg_trgm, the two extensions the app depends on.
+#
+# Deliberately *not* Supabase's image, which also has pgroonga: the app is meant
+# to run on any Postgres with pgvector (ADR-0003), so developing against a
+# database with more than production has is how you find out too late that you
+# used something that is not there.
 services:
   db:
-    image: supabase/postgres:15.8.1.060
+    image: pgvector/pgvector:pg15
     environment:
       POSTGRES_PASSWORD: yaongi
       # Deliberately no POSTGRES_DB. This image's entrypoint creates that
