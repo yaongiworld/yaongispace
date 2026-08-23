@@ -49,18 +49,37 @@ function publicOrigin(request: NextRequest): URL {
   return new URL(request.url);
 }
 
+/**
+ * Expire the one-shot state cookie, whatever the outcome.
+ *
+ * It is worth ten minutes and one round-trip; leaving it behind on a failed
+ * attempt means the next sign-in starts with somebody else's state sitting in
+ * the jar.
+ */
+function clearState(response: NextResponse): NextResponse {
+  response.cookies.set(OAUTH_STATE_COOKIE, "", { path: "/", maxAge: 0 });
+  return response;
+}
+
 export async function GET(request: NextRequest) {
   const url = publicOrigin(request);
   const jar = await cookies();
 
   const expectedState = jar.get(OAUTH_STATE_COOKIE)?.value;
-  jar.delete(OAUTH_STATE_COOKIE);
+
+  /* The state cookie is cleared on the *response*, never through `jar`.
+     `cookies()` is readonly inside a Route Handler — Next allows mutation only
+     in a Server Action or middleware — and calling `.delete()` here throws,
+     which took out the whole handler before it ever compared the state. Every
+     sign-in then failed as a state mismatch: a correct cookie behaved exactly
+     like no cookie, which is what made it look like a cookie-delivery problem
+     rather than a bug on our side. */
 
   // Google reports its own refusals here — the user tapping "cancel" on the
   // consent screen arrives with ?error=access_denied. Nothing went wrong;
   // they just changed their mind.
   if (url.searchParams.get("error")) {
-    return NextResponse.redirect(new URL("/sign-in", url));
+    return clearState(NextResponse.redirect(new URL("/sign-in", url)));
   }
 
   const code = url.searchParams.get("code");
@@ -73,7 +92,7 @@ export async function GET(request: NextRequest) {
        expired 10-minute window), not credentials. */
     const back = new URL("/sign-in", url);
     back.searchParams.set("error", "state");
-    return NextResponse.redirect(back);
+    return clearState(NextResponse.redirect(back));
   }
 
   let personId: string;
@@ -83,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     if (!result.admitted) {
       // Not one of us. A warm page, and no session.
-      return NextResponse.redirect(new URL("/sign-in/refused", url));
+      return clearState(NextResponse.redirect(new URL("/sign-in/refused", url)));
     }
     personId = result.personId;
   } catch (error) {
@@ -96,12 +115,12 @@ export async function GET(request: NextRequest) {
        rather than "nothing happened". */
     const back = new URL("/sign-in", url);
     back.searchParams.set("error", "exchange");
-    return NextResponse.redirect(back);
+    return clearState(NextResponse.redirect(back));
   }
 
   const response = NextResponse.redirect(new URL("/", url));
   response.cookies.set(SESSION_COOKIE, createSessionValue(personId), {
     ...SESSION_COOKIE_OPTIONS,
   });
-  return response;
+  return clearState(response);
 }

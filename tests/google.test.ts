@@ -80,3 +80,21 @@ test("the callback redirects to the browser's address, not the bind address", ()
   // inside the helper, never as the thing redirects are built from.
   expect(route).not.toMatch(/const url = new URL\(request\.url\)/);
 });
+
+test("the callback never mutates the cookie jar", () => {
+  // `cookies()` is readonly inside a Route Handler — Next permits mutation
+  // only in a Server Action or middleware — so `jar.delete()` throws. It threw
+  // *before* the state comparison, so every sign-in failed as a state
+  // mismatch and a correct cookie behaved exactly like no cookie. That is why
+  // it read as a cookie-delivery problem for so long.
+  //
+  // Nothing in the suite could catch it: the handler needs a real request, and
+  // the throw only happens in the Route Handler context. So this pins the
+  // shape instead — state is cleared on the response, never through the jar.
+  const route = readFileSync(
+    join(import.meta.dirname, "..", "app/auth/callback/route.ts"),
+    "utf8",
+  );
+  expect(route).not.toMatch(/jar\.(delete|set)\(/);
+  expect(route).toContain("clearState");
+});
