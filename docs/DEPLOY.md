@@ -41,12 +41,19 @@ R2, not here. Two things to know about it:
 The migrations create the two extensions they need (`pg_trgm`, `vector`), so
 there is nothing to run by hand.
 
-Take **two** connection strings from Project Settings → Database:
+Take **two** connection strings from Project Settings → Database. Both are the
+**pooler** host, differing only in port:
 
-| | Port | Used by |
-|---|---|---|
-| Transaction pooler | 6543 | the app — `DATABASE_URL` |
-| Direct | 5432 | migrations — `MIGRATION_DATABASE_URL` |
+| | Host | Port | Used by |
+|---|---|---|---|
+| Transaction pooler | `...pooler.supabase.com` | 6543 | the app — `DATABASE_URL` |
+| Session pooler | `...pooler.supabase.com` | 5432 | migrations — `MIGRATION_DATABASE_URL` |
+
+**Not the direct `db.<ref>.supabase.co` host**, tempting as it looks for
+migrations. Supabase now resolves it over **IPv6 only**, and GitHub Actions
+runners are IPv4-only — so a CI migration step pointed at it fails with
+`ENOTFOUND` on the first push. The session-mode pooler is IPv4 and runs DDL in
+a transaction correctly, which is the only property migrations need.
 
 **This distinction is load-bearing.** `lib/db.ts` opens a raw `pg` Pool, and on
 Vercel every serverless instance opens its own — the direct connection limit is
@@ -127,7 +134,8 @@ Add the domain under Settings → Domains and point DNS at Vercel.
 
 Repository → Settings → Secrets → Actions:
 
-- `MIGRATION_DATABASE_URL` — the **direct** connection string (not the pooled one)
+- `MIGRATION_DATABASE_URL` — the **session pooler** string, port 5432 (see the
+  IPv6 note in step 1 — not the direct `db.<ref>.supabase.co` host)
 
 `.github/workflows/ci.yml` then applies pending migrations on every push to
 `main`, before the new code serves. It is idempotent: already-applied files are
@@ -137,7 +145,7 @@ For the very first deploy, run it once by hand so the schema exists before
 anyone visits:
 
 ```sh
-DATABASE_URL='<direct connection string>' npm run migrate
+DATABASE_URL='<session pooler string, port 5432>' npm run migrate
 ```
 
 ### 6. The allowlist — or nobody can sign in
