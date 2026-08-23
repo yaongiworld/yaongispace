@@ -38,15 +38,30 @@ import {
  * the request keeps this working if it is ever unset.
  */
 function publicOrigin(request: NextRequest): URL {
+  /* **Origin only.** An earlier version returned `new URL(configured)` whole,
+     which silently discarded the query string — so `code` and `state` were
+     always null and every sign-in failed as a state mismatch. It went
+     unnoticed locally because GOOGLE_REDIRECT_URI is unset in development, so
+     the fallback below ran and the query survived.
+
+     What this is for: `request.url` behind a container or proxy is the
+     internal bind address (http://0.0.0.0:3000), so redirects built from it
+     send the browser nowhere. The fix is to borrow the *origin* from the
+     configured redirect URI while keeping this request's own path and query. */
+  const here = new URL(request.url);
+
   const configured = process.env.GOOGLE_REDIRECT_URI;
   if (configured) {
     try {
-      return new URL(configured);
+      const origin = new URL(configured);
+      here.protocol = origin.protocol;
+      here.host = origin.host;
     } catch {
-      // A malformed value should not take out sign-in; fall through.
+      // A malformed value should not take out sign-in; keep the request's own.
     }
   }
-  return new URL(request.url);
+
+  return here;
 }
 
 /**
@@ -67,15 +82,6 @@ export async function GET(request: NextRequest) {
 
   const expectedState = jar.get(OAUTH_STATE_COOKIE)?.value;
 
-  // TEMPORARY diagnostic — removed once sign-in works. Logs only whether the
-  // values are present and whether they agree, never the values themselves.
-  console.log("callback probe", JSON.stringify({
-    cookieNamesSeen: jar.getAll().map((c) => c.name),
-    rawCookieHeader: request.headers.get("cookie")?.split(";").map((c) => c.trim().split("=")[0]) ?? null,
-    hasExpected: Boolean(expectedState),
-    hasState: Boolean(request.nextUrl.searchParams.get("state")),
-    agree: expectedState === request.nextUrl.searchParams.get("state"),
-  }));
 
   /* The state cookie is cleared on the *response*, never through `jar`.
      `cookies()` is readonly inside a Route Handler — Next allows mutation only

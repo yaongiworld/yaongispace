@@ -98,3 +98,27 @@ test("the callback never mutates the cookie jar", () => {
   expect(route).not.toMatch(/jar\.(delete|set)\(/);
   expect(route).toContain("clearState");
 });
+
+test("the callback keeps this request's query when it borrows the public origin", () => {
+  // The regression that made sign-in impossible in production: publicOrigin
+  // returned `new URL(GOOGLE_REDIRECT_URI)` whole, which has no query string,
+  // so `code` and `state` read null on every request and every sign-in failed
+  // as a state mismatch.
+  //
+  // It could not reproduce locally: GOOGLE_REDIRECT_URI is unset in
+  // development, so the fallback ran and the query survived. The shape is what
+  // matters — the request's own URL is the base, and only protocol and host
+  // are overridden.
+  const route = readFileSync(
+    join(import.meta.dirname, "..", "app/auth/callback/route.ts"),
+    "utf8",
+  );
+  const fn = route.slice(
+    route.indexOf("function publicOrigin"),
+    route.indexOf("export async function GET"),
+  );
+  expect(fn).toContain("new URL(request.url)");
+  expect(fn).toMatch(/\.host = /);
+  // Returning the configured URL itself is exactly the bug.
+  expect(fn).not.toMatch(/return new URL\(configured\)/);
+});
