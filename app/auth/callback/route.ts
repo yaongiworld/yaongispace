@@ -67,7 +67,13 @@ export async function GET(request: NextRequest) {
   const state = url.searchParams.get("state");
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    return NextResponse.redirect(new URL("/sign-in", url));
+    /* The round-trip lost its state cookie, or somebody fed us a code of their
+       own. Marked separately from an exchange failure because the causes are
+       unrelated: this one is cookies (a domain that redirected mid-flow, an
+       expired 10-minute window), not credentials. */
+    const back = new URL("/sign-in", url);
+    back.searchParams.set("error", "state");
+    return NextResponse.redirect(back);
   }
 
   let personId: string;
@@ -82,7 +88,15 @@ export async function GET(request: NextRequest) {
     personId = result.personId;
   } catch (error) {
     console.error("sign-in failed", error);
-    return NextResponse.redirect(new URL("/sign-in", url));
+    /* Back to the front door, with a marker. The message itself is not shown —
+       a stack trace on a public route is both unfriendly and a small
+       information leak — but landing on a bare /sign-in with no explanation is
+       indistinguishable from never having tried, which is precisely the state
+       that is hard to debug. The marker says "it broke, look at the logs"
+       rather than "nothing happened". */
+    const back = new URL("/sign-in", url);
+    back.searchParams.set("error", "exchange");
+    return NextResponse.redirect(back);
   }
 
   const response = NextResponse.redirect(new URL("/", url));

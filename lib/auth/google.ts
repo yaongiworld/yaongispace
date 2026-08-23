@@ -139,7 +139,17 @@ export async function exchangeCodeForIdentity(
   });
 
   if (!response.ok) {
-    throw new Error(`Google rejected the authorization code (${response.status}).`);
+    /* Google's body names the actual fault — `invalid_client` for a bad
+       secret, `redirect_uri_mismatch` for a URI that does not match the Cloud
+       console character for character, `invalid_grant` for a reused or expired
+       code. Without it the status alone is 400 for all three, which is the
+       difference between a one-line fix and an afternoon. It is safe to log:
+       the body describes our configuration, and carries no user data and no
+       part of the secret. */
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Google rejected the authorization code (${response.status}): ${detail.slice(0, 300)}`,
+    );
   }
 
   const { id_token: idToken } = (await response.json()) as { id_token?: string };

@@ -12,7 +12,42 @@ export const metadata = {
   title: "들어가기 · 야옹이월드",
 };
 
-export default function SignInPage() {
+/**
+ * A sign-in that failed halfway looks exactly like one never attempted: you
+ * come back to this page and it says nothing. That is fine for a person who
+ * changed their mind at Google's consent screen, and miserable when something
+ * is actually misconfigured — the app appears to have ignored you.
+ *
+ * So the callback marks *why* it sent you back, and this says so in one line.
+ * Deliberately vague about the cause: the detail is in the server logs, and a
+ * public page is the wrong place to describe our own configuration.
+ */
+function Trouble({ reason }: { reason: string | undefined }) {
+  if (reason !== "exchange" && reason !== "state") return null;
+
+  return (
+    <p
+      className="w-full px-5 py-4 text-center text-sm leading-relaxed text-clay-ink"
+      style={{
+        borderRadius: "var(--radius-clay)",
+        background: "var(--color-clay-apricot)",
+        boxShadow: "var(--shadow-clay)",
+      }}
+    >
+      {reason === "state"
+        ? "로그인이 도중에 끊겼어요. 한 번 더 해볼까요?"
+        : "구글과 이야기하다가 문제가 생겼어요. 잠시 뒤에 다시 해주세요."}
+    </p>
+  );
+}
+
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 px-6 py-12">
       <header className="flex flex-col items-center gap-2 text-center">
@@ -32,6 +67,8 @@ export default function SignInPage() {
           boxShadow: "var(--shadow-clay)",
         }}
       >
+        <Trouble reason={error} />
+
         <p className="text-center text-base leading-relaxed text-clay-ink">
           우리 둘만의 공간이에요.
           <br />
