@@ -1,13 +1,13 @@
 # Deploying Yaongispace
 
-Vercel for the app, **Neon** for Postgres, Cloudflare R2 for photo bytes —
+Vercel for the app, **Supabase** for Postgres, Cloudflare R2 for photo bytes —
 hosting settled in [ticket 011](../.wayfinder/tickets/011-hosting-and-storage.md),
 storage in [ADR-0012](adr/0012-r2-for-photo-storage.md). This is the *how*.
 
 Domain: **yaongiworld.com**.
 
 **Roughly $1–2/month**, all of it R2 at curated photo volume. Vercel's free tier
-covers two people and Neon's free tier covers a two-person database.
+covers two people and Supabase's free tier covers a two-person database.
 
 That was $26.50 until the search change: the app needs no Supabase SDK — it
 talks to Postgres through plain `pg` — so **pgroonga was the only thing tying it
@@ -20,24 +20,33 @@ Neon, Supabase, Naver Cloud, or your own.
 Each step needs a value from the one before it. Doing them out of order mostly
 works and then fails at sign-in with nothing in the logs.
 
-### 1. Neon — Postgres
+### 1. Supabase — Postgres
 
-Create a project in **AWS ap-northeast-2 (Seoul)**; both of you are in Korea and
-it is the difference between a snappy app and a sluggish one.
+Create a project in **Northeast Asia (Seoul), ap-northeast-2**. Both of you are
+in Korea, and this is the reason for choosing Supabase over Neon, which has no
+Korean region: Singapore is ~80ms away and a page render makes several
+sequential round-trips, so the difference is felt on every page rather than
+once.
 
-The free tier is enough: 0.5GB, which is thousands of letters, photo metadata
-and Entries — the photo *bytes* live in R2, not here. It scales to zero when
-idle, so the first request after a quiet spell takes a second or so.
+**The free tier is enough**, and is what this app is deployed on: 500MB, which
+is thousands of letters, photo metadata and Entries — the photo *bytes* live in
+R2, not here. Two things to know about it:
 
-The migrations create the two extensions they need (`pg_trgm`, `vector`), both
-of which Neon has, so there is nothing to run by hand.
+- It **pauses after about a week of no activity**, and the next request takes a
+  few seconds to wake it. For an app opened most days this rarely fires.
+- pgroonga *is* available here, unlike on the cheap alternatives. The app does
+  not use it ([ADR-0003](adr/0003-korean-aware-search.md) chose `pg_trgm` so it
+  could run anywhere) but the upgrade is open if Korean search ever feels weak.
 
-Take **two** connection strings from the dashboard:
+The migrations create the two extensions they need (`pg_trgm`, `vector`), so
+there is nothing to run by hand.
 
-| | Which | Used by |
+Take **two** connection strings from Project Settings → Database:
+
+| | Port | Used by |
 |---|---|---|
-| Pooled | the `-pooler` host | the app — `DATABASE_URL` |
-| Direct | the plain host | migrations — `MIGRATION_DATABASE_URL` |
+| Transaction pooler | 6543 | the app — `DATABASE_URL` |
+| Direct | 5432 | migrations — `MIGRATION_DATABASE_URL` |
 
 **This distinction is load-bearing.** `lib/db.ts` opens a raw `pg` Pool, and on
 Vercel every serverless instance opens its own — the direct connection limit is
@@ -45,11 +54,9 @@ low enough that the app will exhaust it the first time both of you use it at
 once. Migrations need the opposite: DDL inside a transaction is not what a
 transaction-mode pooler is for.
 
-**If you would rather pay for managed backups**, Supabase Pro ($25/mo) works
-identically — same connection strings, same migrations, and it additionally has
-pgroonga, which would let you take the search upgrade in
-[ADR-0003](adr/0003-korean-aware-search.md). Nothing in the app changes either
-way.
+**Upgrading to Pro ($25/mo)** buys daily backups, no pausing and 8GB. Nothing in
+the app changes — same connection strings, same migrations. Worth it when the
+archive stops being replaceable, not before.
 
 ### 2. Cloudflare R2 — photo bytes
 
