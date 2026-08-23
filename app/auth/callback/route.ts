@@ -67,6 +67,16 @@ export async function GET(request: NextRequest) {
 
   const expectedState = jar.get(OAUTH_STATE_COOKIE)?.value;
 
+  // TEMPORARY diagnostic — removed once sign-in works. Logs only whether the
+  // values are present and whether they agree, never the values themselves.
+  console.log("callback probe", JSON.stringify({
+    cookieNamesSeen: jar.getAll().map((c) => c.name),
+    rawCookieHeader: request.headers.get("cookie")?.split(";").map((c) => c.trim().split("=")[0]) ?? null,
+    hasExpected: Boolean(expectedState),
+    hasState: Boolean(request.nextUrl.searchParams.get("state")),
+    agree: expectedState === request.nextUrl.searchParams.get("state"),
+  }));
+
   /* The state cookie is cleared on the *response*, never through `jar`.
      `cookies()` is readonly inside a Route Handler — Next allows mutation only
      in a Server Action or middleware — and calling `.delete()` here throws,
