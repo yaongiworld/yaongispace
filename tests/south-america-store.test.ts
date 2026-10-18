@@ -160,6 +160,25 @@ test("cardio: a retried save that raced the first one is still one record", asyn
   expect(await rowCount("sa_log")).toBe(1);
 });
 
+test("a retried command (same cid) is recognised and not applied twice", async () => {
+  const meta = { cid: "cid-undo-1" };
+  await store.runDayCommand(yangcho, { kind: "heart", now: 1100 }, EVENING);
+  const first = await store.runDayCommand(towee, { kind: "eta.field", person: "tawi", reference: "home_arrival", time: 1200 }, EVENING, meta);
+  const retry = await store.runDayCommand(towee, { kind: "eta.field", person: "tawi", reference: "home_arrival", time: 1200 }, EVENING, meta);
+  expect(first).toMatchObject({ ok: true, changed: true });
+  expect(retry).toMatchObject({ ok: true, changed: false });
+  expect(await rowCount("sa_change")).toBe(2); // the heart and the one ETA change
+});
+
+test("the moment the phone pressed is kept, within reason", async () => {
+  const pressed = new Date("2036-01-02T08:00:00Z"); // 17:00 KST, 1.5h before the server hears of it
+  expect(store.effectiveAt(EVENING, pressed.toISOString()).toISOString()).toBe(pressed.toISOString());
+  // a claim from the future, or from days ago, is not believed
+  expect(store.effectiveAt(EVENING, "2036-01-03T00:00:00Z")).toBe(EVENING);
+  expect(store.effectiveAt(EVENING, "2035-12-20T00:00:00Z")).toBe(EVENING);
+  expect(store.effectiveAt(EVENING, "not a date")).toBe(EVENING);
+});
+
 test("the app role cannot delete anything or rewrite the ledger", async () => {
   await store.runDayCommand(yangcho, { kind: "recalc", now: 900 }, NOON);
   await expect(asPerson(db, yangcho, () => db.query("delete from sa_day"))).rejects.toThrow(/permission denied/);

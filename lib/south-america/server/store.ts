@@ -5,36 +5,16 @@
 // - 적용된 변화는 sa_change에 순서대로 남아요 (지우거나 고치는 권한이 앱에 없어요).
 import type { PoolClient } from 'pg';
 import { asPerson } from '@/lib/as-person';
-import { createDayState, type ActionError, type ActionResult, type DayState } from '../domain/day/day';
+import { createDayState, type ActionResult } from '../domain/day/day';
 import { parseDayState } from '../domain/day/daybook';
 import { applyDayCommand, parseDayCommand, targetDay, type DayCommand } from './commands';
-import { cancelCardio, editCardio, recordCardio, restoreCardio, type EditPatch, type LogError, type RecordInput } from '../domain/exercise/logs';
-import { emptyLogBook, isCardioLog, type StoredLog } from '../domain/exercise/types';
+import { cancelCardio, editCardio, recordCardio, restoreCardio } from '../domain/exercise/logs';
+import { emptyLogBook, type StoredLog } from '../domain/exercise/types';
 import { planDayOf } from '../domain/time';
 import type { PersonId } from '../domain/types';
+import type { CommandMeta, DayCommandOutcome, DayRow, LogCommand, LogCommandOutcome, Snapshot } from './wire';
 
-export type DayRow = { day: string; state: DayState; version: number };
-
-export type Snapshot = {
-  persona: PersonId;
-  /** 서버가 정한 오늘 (04:00 Asia/Seoul 경계) */
-  today: string;
-  /** 서버의 현재 순간 (ISO) */
-  serverNow: string;
-  /** 모든 날, 최근 날짜부터. 오늘 줄이 항상 들어 있어요 */
-  days: DayRow[];
-  logs: StoredLog[];
-};
-
-export type DayCommandOutcome = { ok: true; changed: boolean; version: number; day: string } | { ok: false; reason: ActionError | 'not_member' | 'bad_command' | 'unreadable_day' };
-
-export type LogCommand =
-  | { kind: 'log.record'; input: Omit<RecordInput, 'enteredBy' | 'recordedAt'> }
-  | { kind: 'log.edit'; logId: string; patch: EditPatch }
-  | { kind: 'log.cancel'; logId: string }
-  | { kind: 'log.restore'; logId: string };
-
-export type LogCommandOutcome = { ok: true; changed: boolean; version: number; logId: string } | { ok: false; reason: LogError | 'not_member' | 'bad_command' };
+export type { CommandMeta, DayCommandOutcome, DayRow, LogCommand, LogCommandOutcome, Snapshot } from './wire';
 
 /** 로그인한 사람의 역할. 남미 앱 멤버가 아니면 null (RLS 때문에 sa_member가 보이지 않아요) */
 async function personaIn(client: PoolClient): Promise<PersonId | null> {
@@ -72,10 +52,22 @@ export async function getSnapshot(personId: string, now: Date = new Date()): Pro
   });
 }
 
-export async function runDayCommand(personId: string, raw: unknown, now: Date = new Date()): Promise<DayCommandOutcome> {
+/**
+ * 폰이 보낸 "누른 순간"은 믿되 범위를 지켜요: 서버의 지금보다 미래일 수 없고, 이틀보다 오래되면 서버 시각을 써요.
+ * (오프라인으로 눌렀다가 나중에 전송돼도 눌렀던 순간이 기록되도록)
+ */
+export function effectiveAt(now: Date, clientAt?: string): Date {
+  if (!clientAt) return now;
+  const t = new Date(clientAt);
+  if (Number.isNaN(t.getTime()) || t.getTime() > now.getTime() || now.getTime() - t.getTime() > 2 * 86_400_000) return now;
+  return t;
+}
+
+export async function runDayCommand(personId: string, raw: unknown, now: Date = new Date(), meta: CommandMeta = {}): Promise<DayCommandOutcome> {
   const cmd = parseDayCommand(raw);
   if (!cmd) return { ok: false, reason: 'bad_command' };
   const today = planDayOf(now);
+  const at = effectiveAt(now, meta.clientAt);
   return asPerson(personId, async (client) => {
     const persona = await personaIn(client);
     if (!persona) return { ok: false, reason: 'not_member' } as const;
@@ -84,23 +76,29 @@ export async function runDayCommand(personId: string, raw: unknown, now: Date = 
     const locked = await client.query<{ state: unknown; version: number }>('select state, version from sa_day where day = $1 for update', [day]);
     const row = locked.rows[0];
     if (!row) return { ok: false, reason: 'no_session' } as const;
+
+    // 이미 반영된 명령의 재시도 (응답만 놓친 경우): 다시 적용하지 않아요. 줄을 잠근 뒤에 확인하니 동시에 온 재시도도 걸러져요
+    if (meta.cid) {
+      const seen = await client.query('select 1 from sa_change where cmd_id = $1', [meta.cid]);
+      if (seen.rowCount) return { ok: true, changed: false, version: row.version, day } as const;
+    }
     const state = parseDayState(row.state);
     if (!state) return { ok: false, reason: 'unreadable_day' } as const;
 
-    const result: ActionResult = applyDayCommand(state, cmd, { by: persona, at: now.toISOString() });
+    const result: ActionResult = applyDayCommand(state, cmd, { by: persona, at: at.toISOString() });
     if (!result.ok) return { ok: false, reason: result.reason } as const;
     if (!result.changed) return { ok: true, changed: false, version: row.version, day } as const;
 
     const version = row.version + 1;
     await client.query('update sa_day set state = $2, version = $3, updated_at = now(), updated_by = $4 where day = $1', [day, JSON.stringify(result.state), version, personId]);
-    await recordChange(client, personId, persona, `day:${day}`, cmd, version);
+    await recordChange(client, personId, persona, `day:${day}`, cmd, version, meta.cid);
     return { ok: true, changed: true, version, day } as const;
   });
 }
 
-export async function runLogCommand(personId: string, cmd: LogCommand, now: Date = new Date()): Promise<LogCommandOutcome> {
+export async function runLogCommand(personId: string, cmd: LogCommand, now: Date = new Date(), meta: CommandMeta = {}): Promise<LogCommandOutcome> {
   if (typeof cmd !== 'object' || cmd === null) return { ok: false, reason: 'bad_command' };
-  const at = now.toISOString();
+  const at = effectiveAt(now, meta.clientAt).toISOString();
   return asPerson(personId, async (client) => {
     const persona = await personaIn(client);
     if (!persona) return { ok: false, reason: 'not_member' } as const;
@@ -155,6 +153,6 @@ export async function runLogCommand(personId: string, cmd: LogCommand, now: Date
   });
 }
 
-async function recordChange(client: PoolClient, personId: string, persona: PersonId, target: string, command: DayCommand | LogCommand, version: number): Promise<void> {
-  await client.query('insert into sa_change (person_id, persona, target, command, version) values ($1, $2, $3, $4, $5)', [personId, persona, target, JSON.stringify(command), version]);
+async function recordChange(client: PoolClient, personId: string, persona: PersonId, target: string, command: DayCommand | LogCommand, version: number, cmdId?: string): Promise<void> {
+  await client.query('insert into sa_change (person_id, persona, target, command, version, cmd_id) values ($1, $2, $3, $4, $5, $6)', [personId, persona, target, JSON.stringify(command), version, cmdId ?? null]);
 }

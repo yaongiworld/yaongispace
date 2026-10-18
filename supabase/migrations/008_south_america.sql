@@ -113,10 +113,15 @@ create table sa_change (
   target     text not null,
   command    jsonb not null,
   -- The target's version after the change.
-  version    integer not null
+  version    integer not null,
+  -- Minted by the phone per command. A retry after a dropped connection carries
+  -- the same id, so a change that already landed is recognised and not applied
+  -- twice (a command like "undo" is not safe to repeat).
+  cmd_id     text
 );
 
 create index sa_change_target_idx on sa_change (target, id);
+create unique index sa_change_cmd_id_idx on sa_change (cmd_id) where cmd_id is not null;
 
 comment on table sa_change is
   'Append-only: what was applied, by whom, in what order. Not used to serve the app; there for diagnosis and rebuild.';

@@ -172,6 +172,26 @@ Emails are stored lowercase and matched against what Google returns in the
 one you usually write to. A mismatch presents as the warm Korean refusal, which
 looks identical to not being invited.
 
+## South America (migration 008)
+
+`/south-america` needs nothing new in Vercel or R2 — it uses the same database and
+sign-in. Migration 008 adds the `sa_` tables, and **because CI applies migrations on
+every push to `main`, merging it changes production.** Review the migration and the PR
+before merging, and do not push to `main` directly.
+
+The migration backfills `sa_member` from the display names `토위` and `양초` (step 6).
+If those people did not exist when it ran, bind them by hand afterwards — nobody is
+bound by name after the migration:
+
+```sql
+insert into sa_member (person_id, persona)
+select id, case display_name when '토위' then 'tawi' else 'yangcho' end
+  from person where display_name in ('토위', '양초')
+on conflict do nothing;
+```
+
+A signed-in Person who is not in `sa_member` sees an explanation page, not an empty app.
+
 ## After the first deploy, check these four
 
 1. **Sign in** as each of you. A refusal means the allowlist does not match what
