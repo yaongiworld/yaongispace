@@ -38,13 +38,15 @@ export function Sheet({
     document.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panel.current?.focus();
+    // Move focus in — unless a child already took it (an `autoFocus` input
+    // must keep it, or the phone keyboard never comes up).
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
       previous?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, onClose, mounted]);
 
   if (!open || !mounted) return null;
 

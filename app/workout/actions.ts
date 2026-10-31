@@ -11,6 +11,7 @@ import { eraTotals } from "@/lib/era/store";
 import { newlyUnlocked } from "@/lib/workout/items";
 import { parseWorkoutInput } from "@/lib/workout/input";
 import { addWorkout, deleteWorkout, updateWorkout, workoutCount } from "@/lib/workout/store";
+import { today } from "@/lib/today/day";
 
 /**
  * Workout writes. What comes back is only what a save *earned* — a new item
@@ -68,7 +69,8 @@ function earned(before: { count: number; eraM: number }, after: { count: number;
 export async function saveWorkout(raw: unknown): Promise<Saved> {
   const meId = await me();
   const input = parseWorkoutInput(raw);
-  if (!input) return { ok: false };
+  // Nothing from the future: it would walk an era forward on a day that has not happened.
+  if (!input || input.day > today()) return { ok: false };
 
   const before = await snapshot(meId, input.personId);
   if (!before) return { ok: false };
@@ -81,7 +83,7 @@ export async function saveWorkout(raw: unknown): Promise<Saved> {
 export async function fixWorkout(id: string, raw: unknown): Promise<Saved> {
   const meId = await me();
   const input = parseWorkoutInput(raw);
-  if (!input || typeof id !== "string") return { ok: false };
+  if (!input || typeof id !== "string" || input.day > today()) return { ok: false };
 
   const before = await snapshot(meId, input.personId);
   if (!before) return { ok: false };

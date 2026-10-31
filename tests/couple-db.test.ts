@@ -143,6 +143,26 @@ describe("workouts", () => {
     await expect(db.query("UPDATE workout SET entered_by = $1", [towee])).rejects.toThrow(/does not change/);
   });
 
+  test("whose workout, its kind and its era cannot be moved by a fix", async () => {
+    const w = await workouts.addWorkout(yangcho, run(yangcho));
+    await expect(db.query("UPDATE workout SET person_id = $1 WHERE id = $2", [towee, w.id])).rejects.toThrow(/do not change/);
+    await expect(
+      db.query("UPDATE workout SET kind = 'stretch', distance_m = null, minutes = null, era_id = null WHERE id = $1", [w.id]),
+    ).rejects.toThrow(/do not change/);
+  });
+
+  test("a new workout is signed by whoever wrote it, in both columns", async () => {
+    await expect(
+      asPerson(db, yangcho, () =>
+        db.query(
+          `INSERT INTO workout (person_id, entered_by, updated_by, day, kind, exercise_id)
+           VALUES ($1, $1, $2, $3, 'stretch', 'stretch')`,
+          [yangcho, towee, DAY],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/);
+  });
+
   test("each kind carries only its own numbers", async () => {
     await expect(
       db.query(

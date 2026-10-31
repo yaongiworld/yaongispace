@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { currentPersonId } from "@/lib/auth/current-person";
-import { createEvent, deleteEvent } from "@/lib/calendar/events";
+import { asPerson } from "@/lib/as-person";
+import { createEvent } from "@/lib/calendar/events";
 import { isDay } from "@/lib/today/day";
 
 /**
@@ -32,7 +33,10 @@ export async function removeAnniversary(id: string): Promise<void> {
   const personId = await currentPersonId();
   if (!personId) redirect("/sign-in");
   if (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id)) return;
-  await deleteEvent(id);
+  // Only all-day things — the anniversaries this card makes — and as the
+  // signed-in person, so RLS applies. A timed Event from the old agenda is
+  // not this card's to remove. A yearly one goes for every year: it is one row.
+  await asPerson(personId, (c) => c.query("DELETE FROM event WHERE id = $1 AND all_day", [id]));
   revalidatePath("/moments");
   revalidatePath("/calendar");
 }

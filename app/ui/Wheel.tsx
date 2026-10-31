@@ -30,18 +30,22 @@ export function Wheel<T extends number>({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Set while a tap's smooth scroll is on its way, so it is not snapped. */
+  const gliding = useRef(false);
   const index = Math.max(0, values.indexOf(value));
 
   // Put the current value in the middle when the wheel mounts or the value
   // changes from outside (e.g. switching exercise).
   useEffect(() => {
     const el = ref.current;
+    if (gliding.current) return;
     if (el && Math.round(el.scrollTop / ROW) !== index) el.scrollTop = index * ROW;
   }, [index]);
 
   const onScroll = useCallback(() => {
     if (settle.current) clearTimeout(settle.current);
     settle.current = setTimeout(() => {
+      gliding.current = false;
       const el = ref.current;
       if (!el) return;
       const i = Math.min(values.length - 1, Math.max(0, Math.round(el.scrollTop / ROW)));
@@ -51,6 +55,7 @@ export function Wheel<T extends number>({
 
   const go = (i: number) => {
     const clamped = Math.min(values.length - 1, Math.max(0, i));
+    gliding.current = true;
     ref.current?.scrollTo({ top: clamped * ROW, behavior: "smooth" });
     onChange(values[clamped]);
   };

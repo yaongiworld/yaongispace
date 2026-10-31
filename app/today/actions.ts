@@ -49,7 +49,9 @@ export async function undoLeftWork(): Promise<void> {
 }
 
 export async function saveMemo(body: string, day?: string): Promise<void> {
-  await setMemo(await me(), day && isDay(day) ? day : today(), String(body ?? ""));
+  // A day card in Moments may write any past day; never a future one.
+  const target = day && isDay(day) && day <= today() ? day : today();
+  await setMemo(await me(), target, String(body ?? ""));
   refresh();
 }
 

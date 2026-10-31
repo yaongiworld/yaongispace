@@ -20,6 +20,7 @@ export interface MomentEvent {
   day: string;
   title: string;
   yearly: boolean;
+  allDay: boolean;
   /** "3주년", or null. */
   label: string | null;
 }
@@ -62,7 +63,10 @@ export function MomentsView({
   return (
     <main className="page-in mx-auto flex min-h-dvh max-w-md flex-col gap-4 px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-28">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="text-3xl text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
+        <h1
+          className="text-3xl text-clay-ink"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
           Moments
         </h1>
         <nav aria-label="달" className="flex shrink-0 items-center">
@@ -74,7 +78,10 @@ export function MomentsView({
           >
             ‹
           </Link>
-          <span className="min-w-[3rem] text-center text-sm font-semibold whitespace-nowrap text-clay-ink" aria-live="polite">
+          <span
+            className="min-w-[3rem] text-center text-sm font-semibold whitespace-nowrap text-clay-ink"
+            aria-live="polite"
+          >
             {label}
           </span>
           <Link
@@ -92,11 +99,24 @@ export function MomentsView({
         aria-label={`${label} 기분 달력`}
         /* -mx-4 and px-0.5 make each of the seven columns 44px at 320px. */
         className="-mx-4 px-0.5 py-3"
-        style={{ background: "var(--color-clay-card)", borderRadius: "var(--radius-clay-lg)", boxShadow: "var(--shadow-clay)" }}
+        style={{
+          background: "var(--color-clay-card)",
+          borderRadius: "var(--radius-clay-lg)",
+          boxShadow: "var(--shadow-clay)",
+        }}
       >
         <div className="grid grid-cols-7" aria-hidden>
           {WEEK.map((w, i) => (
-            <span key={w} className="pb-1 text-center text-[11px]" style={{ color: i >= 5 ? "var(--color-clay-berry)" : "var(--color-clay-ink-soft)" }}>
+            <span
+              key={w}
+              className="pb-1 text-center text-[11px]"
+              style={{
+                color:
+                  i >= 5
+                    ? "var(--color-clay-berry)"
+                    : "var(--color-clay-ink-soft)",
+              }}
+            >
               {w}
             </span>
           ))}
@@ -104,7 +124,9 @@ export function MomentsView({
         <div className="grid grid-cols-7">
           {grid.flat().map((cell) => {
             const d = days[cell.day];
-            const hasHeart = Boolean(d?.memo.yangcho || d?.memo.towee || eventsOn(cell.day).length);
+            const hasHeart = Boolean(
+              d?.memo.yangcho || d?.memo.towee || eventsOn(cell.day).length,
+            );
             const moved = Boolean(d?.workouts.length);
             const n = Number(cell.day.slice(8));
             const isToday = cell.day === today;
@@ -121,7 +143,9 @@ export function MomentsView({
                   className="grid h-5 min-w-5 place-items-center px-1 text-[11px] tabular-nums"
                   style={{
                     borderRadius: 99,
-                    background: isToday ? "var(--color-clay-berry)" : "transparent",
+                    background: isToday
+                      ? "var(--color-clay-berry)"
+                      : "transparent",
                     color: isToday ? "white" : "var(--color-clay-ink-soft)",
                     fontWeight: isToday ? 700 : 400,
                   }}
@@ -138,10 +162,19 @@ export function MomentsView({
                   ))}
                 </span>
                 <span className="flex h-2 items-center gap-1" aria-hidden>
-                  {moved ? <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--color-clay-ink-soft)" }} /> : null}
+                  {moved ? (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: "var(--color-clay-ink-soft)" }}
+                    />
+                  ) : null}
                 </span>
                 {hasHeart ? (
-                  <span aria-hidden className="absolute top-0.5 right-0.5 text-[9px] leading-none" style={{ color: "var(--color-clay-berry)" }}>
+                  <span
+                    aria-hidden
+                    className="absolute top-0.5 right-0.5 text-[9px] leading-none"
+                    style={{ color: "var(--color-clay-berry)" }}
+                  >
                     ♥
                   </span>
                 ) : null}
@@ -161,9 +194,15 @@ export function MomentsView({
         </Link>
       ) : null}
 
-      <p className="flex justify-center gap-4 text-[11px] text-clay-ink-soft" aria-hidden>
+      <p
+        className="flex justify-center gap-4 text-[11px] text-clay-ink-soft"
+        aria-hidden
+      >
         <span>
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--color-clay-ink-soft)" }} />
+          <span
+            className="mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle"
+            style={{ background: "var(--color-clay-ink-soft)" }}
+          />
           운동한 날
         </span>
         <span>
@@ -174,7 +213,11 @@ export function MomentsView({
         </span>
       </p>
 
-      <Sheet open={open !== null} onClose={close} title={open ? shortDayLabel(open) : ""}>
+      <Sheet
+        open={open !== null}
+        onClose={close}
+        title={open ? shortDayLabel(open) : ""}
+      >
         {open ? (
           <DayCard
             key={open}
@@ -194,7 +237,12 @@ export function MomentsView({
   );
 }
 
-function cellLabel(day: string, d: MomentDay | undefined, heart: boolean, names: Record<Cat, string>): string {
+function cellLabel(
+  day: string,
+  d: MomentDay | undefined,
+  heart: boolean,
+  names: Record<Cat, string>,
+): string {
   const parts = [shortDayLabel(day)];
   for (const c of CATS) {
     const m = d?.mood[c] ? moodOf(d.mood[c]) : null;
@@ -248,10 +296,15 @@ function DayCard({
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="text-sm font-semibold text-clay-ink">
                   {names[c]} <span className="text-lg">{m?.emoji ?? ""}</span>
-                  <span className="ml-1 text-xs font-normal text-clay-ink-soft">{m?.label ?? "—"}</span>
+                  <span className="ml-1 text-xs font-normal text-clay-ink-soft">
+                    {m?.label ?? "—"}
+                  </span>
                 </span>
                 {line ? (
-                  <span className="text-base text-clay-ink" style={{ fontFamily: "var(--font-letter)" }}>
+                  <span
+                    className="text-base text-clay-ink"
+                    style={{ fontFamily: "var(--font-letter)" }}
+                  >
                     {line}
                   </span>
                 ) : null}
@@ -298,29 +351,50 @@ function DayCard({
           <h3 className="text-xs font-semibold text-clay-ink-soft">기념일</h3>
           <ul className="flex flex-col gap-1.5">
             {events.map((e) => (
-              <li key={e.id} className="flex items-center gap-2 text-sm text-clay-ink">
+              <li
+                key={e.id}
+                className="flex items-center gap-2 text-sm text-clay-ink"
+              >
                 <span aria-hidden style={{ color: "var(--color-clay-berry)" }}>
                   ♥
                 </span>
                 <span className="flex-1">
                   {e.title}
-                  {e.label ? <span className="ml-1 text-xs text-clay-ink-soft">{e.label}</span> : null}
-                  {e.yearly ? <span className="ml-1 text-xs text-clay-ink-soft">· 매년</span> : null}
+                  {e.label ? (
+                    <span className="ml-1 text-xs text-clay-ink-soft">
+                      {e.label}
+                    </span>
+                  ) : null}
+                  {e.yearly ? (
+                    <span className="ml-1 text-xs text-clay-ink-soft">
+                      · 매년
+                    </span>
+                  ) : null}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirmId !== e.id) return setConfirmId(e.id);
-                    startTransition(async () => {
-                      await removeAnniversary(e.id);
-                      onCheer("지웠어요");
-                    });
-                  }}
-                  aria-label={confirmId === e.id ? `${e.title} 정말 지우기` : `${e.title} 지우기`}
-                  className="press min-h-11 min-w-11 px-2 text-xs text-clay-ink-soft"
-                >
-                  {confirmId === e.id ? "정말?" : "✕"}
-                </button>
+                {e.allDay ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirmId !== e.id) return setConfirmId(e.id);
+                      startTransition(async () => {
+                        await removeAnniversary(e.id);
+                        onCheer("지웠어요");
+                      });
+                    }}
+                    aria-label={
+                      confirmId === e.id
+                        ? `${e.title} 정말 지우기`
+                        : `${e.title} 지우기`
+                    }
+                    className="press min-h-11 min-w-11 px-2 text-xs text-clay-ink-soft"
+                  >
+                    {confirmId === e.id
+                      ? e.yearly
+                        ? "매년 다 지울까요?"
+                        : "정말?"
+                      : "✕"}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -357,7 +431,10 @@ function DayCard({
           type="submit"
           disabled={pending || memo === (data?.memo[myCat] ?? "")}
           className="press min-h-11 shrink-0 px-4 text-sm font-semibold text-white disabled:opacity-40"
-          style={{ background: "var(--color-clay-berry)", borderRadius: "var(--radius-clay-pill)" }}
+          style={{
+            background: "var(--color-clay-berry)",
+            borderRadius: "var(--radius-clay-pill)",
+          }}
         >
           저장
         </button>
@@ -385,18 +462,30 @@ function DayCard({
             placeholder="예: 처음 만난 날"
             aria-label="기념일 이름"
             className="min-h-11 px-4 text-base text-clay-ink outline-none"
-            style={{ background: "var(--color-clay-card)", borderRadius: "var(--radius-clay-pill)", boxShadow: "inset 0 0 0 1.5px var(--color-clay-rose)" }}
+            style={{
+              background: "var(--color-clay-card)",
+              borderRadius: "var(--radius-clay-pill)",
+              boxShadow: "inset 0 0 0 1.5px var(--color-clay-rose)",
+            }}
           />
           <div className="flex items-center gap-2">
             <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-2 px-2 text-sm text-clay-ink">
-              <input type="checkbox" checked={yearly} onChange={(ev) => setYearly(ev.target.checked)} className="h-5 w-5 accent-[var(--color-clay-berry)]" />
+              <input
+                type="checkbox"
+                checked={yearly}
+                onChange={(ev) => setYearly(ev.target.checked)}
+                className="h-5 w-5 accent-[var(--color-clay-berry)]"
+              />
               매년 반복
             </label>
             <button
               type="submit"
               disabled={pending || !annTitle.trim()}
               className="press min-h-11 px-5 text-sm font-semibold text-white disabled:opacity-40"
-              style={{ background: "var(--color-clay-berry)", borderRadius: "var(--radius-clay-pill)" }}
+              style={{
+                background: "var(--color-clay-berry)",
+                borderRadius: "var(--radius-clay-pill)",
+              }}
             >
               추가
             </button>

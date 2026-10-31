@@ -22,6 +22,8 @@ export interface TodayCat {
   leaveMinute: number | null;
   /** "18:07" once they have left, Seoul time. */
   leftAt: string | null;
+  /** Today's one line, if any. */
+  memo: string | null;
 }
 
 type Open = null | "mood" | "clock" | "record" | "memo" | "yaongi";
@@ -185,10 +187,14 @@ export function TodayView({
 
       <Sheet open={open === "memo"} onClose={close} title="한 줄 메모">
         <MemoForm
+          initial={mine.memo ?? ""}
           onSave={(body) => {
             setOpen(null);
-            if (body.trim()) setCheer("메모했어요 ✏️");
-            startTransition(() => saveMemo(body));
+            setCheer(body.trim() ? "메모했어요 ✏️" : "메모를 지웠어요");
+            startTransition(async () => {
+              patchMine({ memo: body.trim() || null });
+              await saveMemo(body);
+            });
           }}
         />
       </Sheet>
@@ -370,7 +376,7 @@ function ClockPicker({
           label="시"
           values={hours}
           value={Math.floor(minute / 60)}
-          onChange={(h) => setMinute(h * 60 + (minute % 60))}
+          onChange={(h) => setMinute((m) => h * 60 + (m % 60))}
           format={(h) => String(h).padStart(2, "0")}
         />
         <span className="text-2xl text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
@@ -380,7 +386,7 @@ function ClockPicker({
           label="분"
           values={tens}
           value={minute % 60}
-          onChange={(m) => setMinute(Math.floor(minute / 60) * 60 + m)}
+          onChange={(mm) => setMinute((m) => Math.floor(m / 60) * 60 + mm)}
           format={(m) => String(m).padStart(2, "0")}
         />
       </div>
@@ -428,8 +434,8 @@ function RecordChoice({ emoji, label, onClick }: { emoji: string; label: string;
   );
 }
 
-function MemoForm({ onSave }: { onSave: (body: string) => void }) {
-  const [body, setBody] = useState("");
+function MemoForm({ initial, onSave }: { initial: string; onSave: (body: string) => void }) {
+  const [body, setBody] = useState(initial);
   return (
     <form
       className="flex flex-col gap-4 pb-2"
@@ -456,7 +462,7 @@ function MemoForm({ onSave }: { onSave: (body: string) => void }) {
       />
       <button
         type="submit"
-        disabled={!body.trim()}
+        disabled={body.trim() === initial.trim()}
         className="press min-h-12 w-full py-3 text-base font-semibold text-white disabled:opacity-40"
         style={{ background: "var(--color-clay-berry)", borderRadius: "var(--radius-clay-pill)" }}
       >

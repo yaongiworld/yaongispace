@@ -50,6 +50,7 @@ export default async function MomentsPage({ searchParams }: { searchParams: Prom
     day: seoulDayKey(o.occursAt),
     title: o.title,
     yearly: o.repeatsYearly,
+    allDay: o.allDay,
     label: anniversaryLabel(o.occursAt, o.occurredAt),
   }));
 

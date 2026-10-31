@@ -21,6 +21,7 @@ import { addDays, isDay, relativeDayLabel, today, weekStart } from "../lib/today
 import { DEFAULT_LEAVE_MINUTE, LEAVE_MINUTES, clockLabel, isLeaveMinute } from "../lib/today/clock";
 import { MOODS } from "../lib/today/moods";
 import { hearthFor } from "../lib/mood";
+import { catLine } from "../lib/today/line";
 import type { NewsGroup } from "../lib/news";
 
 /**
@@ -254,5 +255,59 @@ describe("the cat's line for the new News kinds (충돌 6)", () => {
     expect(hearthFor([group("offwork", "18:30")]).caption).toBe("토위는 18:30에 나올 거래요");
     expect(hearthFor([group("offwork", "left")]).caption).toBe("토위가 회사에서 나왔어요");
     expect(hearthFor([group("workout_for", "crunch")]).caption).toBe("토위가 기록해줬어요 💌");
+  });
+});
+
+describe("the Today cat's one line", () => {
+  const now = new Date("2026-11-01T03:00:00Z"); // 12:00 in Seoul
+  const g = (kind: string, at: string, title: string | null = null, imminent = false): NewsGroup => ({
+    key: `${kind}-${at}`,
+    by: kind === "letter" ? "alone" : "day",
+    journeyTitle: null,
+    arrivedAt: new Date(at),
+    items: [
+      {
+        entryId: "e",
+        kind,
+        sourceId: "s",
+        title,
+        text: "",
+        personId: "p",
+        personName: "토위",
+        journeyId: null,
+        journeyTitle: null,
+        arrivedAt: new Date(at),
+        imminent,
+        occursAt: null,
+      },
+    ],
+  });
+
+  it("never lets a mood push an unseen letter out", () => {
+    const groups = [g("mood", "2026-11-01T02:55:00Z", "happy"), g("letter", "2026-11-01T02:50:00Z")];
+    expect(catLine({ groups, seenAt: null, quietPartner: null, now })).toBe("토위가 편지를 봉했어요");
+  });
+
+  it("still tells you about last night's letter the next morning", () => {
+    const groups = [g("letter", "2026-10-31T13:00:00Z")]; // 22:00 the day before, in Seoul
+    expect(catLine({ groups, seenAt: new Date("2026-10-31T12:00:00Z"), quietPartner: "토위", now })).toBe(
+      "토위가 편지를 봉했어요",
+    );
+  });
+
+  it("lets a letter you have already seen give way", () => {
+    const groups = [g("letter", "2026-10-31T13:00:00Z")];
+    expect(catLine({ groups, seenAt: new Date("2026-10-31T14:00:00Z"), quietPartner: "토위", now })).toBe(
+      "토위는 아직 바쁜가 봐요",
+    );
+  });
+
+  it("puts a workout written for you before a clock change", () => {
+    const groups = [g("offwork", "2026-11-01T02:59:00Z", "18:30"), g("workout_for", "2026-11-01T02:00:00Z", "crunch")];
+    expect(catLine({ groups, seenAt: null, quietPartner: null, now })).toBe("토위가 기록해줬어요 💌");
+  });
+
+  it("is the warm nothing on a quiet day", () => {
+    expect(catLine({ groups: [], seenAt: null, quietPartner: null, now })).toBe("조용한 하루예요");
   });
 });

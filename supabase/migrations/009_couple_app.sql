@@ -125,8 +125,8 @@ create table workout (
   distance_m  integer check (distance_m between 100 and 49900 and distance_m % 100 = 0),
   minutes     integer check (minutes between 1 and 300),
   -- Strength: weight only (no reps, no time). Tenths of a kilogram so 22.5
-  -- is exact; the wheel offers .0 and .5.
-  weight_dg   integer check (weight_dg between 0 and 3000 and weight_dg % 5 = 0),
+  -- is exact; the wheel offers .0 and .5, up to 200.5kg.
+  weight_dg   integer check (weight_dg between 0 and 2005 and weight_dg % 5 = 0),
   -- Core: reps only.
   reps        integer check (reps between 1 and 300),
   -- The era a cardio session walks toward, fixed when it is written down so
@@ -195,20 +195,28 @@ create policy era_readable on era
 create policy workout_readable on workout
   for select using (current_person_id() is not null);
 create policy workout_written_as_self on workout
-  for insert with check (entered_by = current_person_id());
+  for insert with check (entered_by = current_person_id() and updated_by = entered_by);
 create policy workout_fixed_by_either on workout
   for update using (current_person_id() is not null)
   with check (updated_by = current_person_id());
 create policy workout_removed_by_either on workout
   for delete using (current_person_id() is not null);
 
--- Who wrote it down is a fact about the past, like event.person_id.
+-- Who wrote it down is a fact about the past, like event.person_id. Whose
+-- workout it is, what kind, and which era it walked toward are fixed too: a
+-- wrong one is deleted and written again, so a fix can never quietly move
+-- kilometres between people or eras.
 create function workout_keeps_its_author() returns trigger
 language plpgsql
 as $$
 begin
   if new.entered_by is distinct from old.entered_by then
     raise exception 'who wrote a workout down does not change';
+  end if;
+  if new.person_id is distinct from old.person_id
+     or new.kind is distinct from old.kind
+     or new.era_id is distinct from old.era_id then
+    raise exception 'whose workout, its kind and its era do not change';
   end if;
   new.updated_at := now();
   return new;

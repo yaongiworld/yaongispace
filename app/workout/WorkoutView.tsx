@@ -440,11 +440,11 @@ function WorkoutForm({
         <>
           <ChipList label="유산소 종류" items={CARDIO} value={cardioId} onPick={setCardioId} row />
           <div className="flex items-center justify-center gap-1">
-            <Wheel label="킬로미터" values={KM_WHOLE} value={km[0]} onChange={(v) => setKm([v, km[1]])} width={64} />
+            <Wheel label="킬로미터" values={KM_WHOLE} value={km[0]} onChange={(v) => setKm((k) => [v, k[1]])} width={64} />
             <span className="text-3xl text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
               .
             </span>
-            <Wheel label="0.1 킬로미터" values={KM_TENTH} value={km[1]} onChange={(v) => setKm([km[0], v])} width={52} />
+            <Wheel label="0.1 킬로미터" values={KM_TENTH} value={km[1]} onChange={(v) => setKm((k) => [k[0], v])} width={52} />
             <span className="mr-3 text-base text-clay-ink-soft">km</span>
             <Wheel label="분" values={MINUTES} value={minutes} onChange={setMinutes} width={64} />
             <span className="text-base text-clay-ink-soft">분</span>
@@ -477,11 +477,11 @@ function WorkoutForm({
           />
           {strengthId ? (
             <div className="flex items-center justify-center gap-1">
-              <Wheel label="킬로그램" values={KG_WHOLE} value={kg[0]} onChange={(v) => setKg([v, kg[1]])} width={72} />
+              <Wheel label="킬로그램" values={KG_WHOLE} value={kg[0]} onChange={(v) => setKg((k) => [v, k[1]])} width={72} />
               <span className="text-3xl text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
                 .
               </span>
-              <Wheel label="0.5 킬로그램" values={KG_HALF} value={kg[1]} onChange={(v) => setKg([kg[0], v])} width={52} />
+              <Wheel label="0.5 킬로그램" values={KG_HALF} value={kg[1]} onChange={(v) => setKg((k) => [k[0], v])} width={52} />
               <span className="text-base text-clay-ink-soft">kg</span>
             </div>
           ) : (
@@ -505,14 +505,14 @@ function WorkoutForm({
       {/* Pinned to the bottom of the sheet, so on a 320×568 phone the second
           tap of "＋ → 저장" never needs a scroll first. */}
       <div
-        className="sticky bottom-0 -mx-5 -mb-2 px-5 pt-3 pb-2"
+        className="pointer-events-none sticky bottom-0 -mx-5 -mb-2 px-5 pt-3 pb-2"
         style={{ background: "linear-gradient(to bottom, rgb(255 250 246 / 0), #fffaf6 30%)" }}
       >
         <button
           type="button"
           onClick={submit}
           disabled={!payload || pending}
-          className="press min-h-12 w-full py-3 text-base font-semibold text-white disabled:opacity-40"
+          className="press pointer-events-auto min-h-12 w-full py-3 text-base font-semibold text-white disabled:opacity-40"
           style={{ background: "var(--color-clay-berry)", borderRadius: "var(--radius-clay-pill)", boxShadow: "var(--shadow-clay-lift)" }}
         >
           {kind === "stretch" && !editing ? "완료" : "저장"}

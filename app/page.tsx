@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { currentPersonId } from "@/lib/auth/current-person";
 import { asPerson } from "@/lib/as-person";
 import { loadCouple, type Cat } from "@/lib/couple";
-import { newsFor, seeNews } from "@/lib/news";
-import { hearthFor } from "@/lib/mood";
+import { newsFor, newsSeenAt, seeNews } from "@/lib/news";
+import { catLine } from "@/lib/today/line";
 import { shortDayLabel, today } from "@/lib/today/day";
 import { seoulClock } from "@/lib/today/clock";
 import { dayFor } from "@/lib/today/store";
@@ -43,6 +43,7 @@ export default async function HomePage() {
   });
 
   const groups = await newsFor(personId);
+  const seenAt = await newsSeenAt(personId);
   await seeNews(personId);
 
   const cats: TodayCat[] = (["yangcho", "towee"] as Cat[]).map((cat) => {
@@ -56,6 +57,7 @@ export default async function HomePage() {
       mood: d.mood,
       leaveMinute: d.leaveMinute,
       leftAt: d.leftAt ? seoulClock(d.leftAt) : null,
+      memo: d.memo,
     };
   });
 
@@ -63,26 +65,14 @@ export default async function HomePage() {
     <TodayView
       dayLabel={shortDayLabel(day)}
       cats={cats}
-      line={catLine(groups, couple.partner && days[couple.partner.cat].mood === null ? couple.partner.name : null, day)}
+      line={catLine({
+        groups,
+        seenAt,
+        quietPartner: couple.partner && days[couple.partner.cat].mood === null ? couple.partner.name : null,
+      })}
       myCat={couple.me.cat}
       myName={couple.me.name}
       items={items.map((i) => i.id)}
     />
   );
-}
-
-/**
- * The one line the cat says. News from today first (충돌 6); then, if the
- * other one has not pressed a face yet, a gentle guess on their behalf (brief
- * §4 — never a prompt, never a red dot); otherwise the warm nothing.
- */
-function catLine(
-  groups: Awaited<ReturnType<typeof newsFor>>,
-  quietPartner: string | null,
-  day: string,
-): string {
-  const fresh = groups.filter((g) => today(g.arrivedAt) === day);
-  if (fresh.length > 0) return hearthFor(fresh).caption;
-  if (quietPartner) return `${quietPartner}는 아직 바쁜가 봐요`;
-  return hearthFor([]).caption;
 }
