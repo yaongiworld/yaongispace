@@ -10,7 +10,7 @@ import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
-import { chooseLeaveTime, chooseMood, leftWork, saveMemo, signOut, undoLeftWork } from "./actions";
+import { chooseLeaveTime, chooseMood, claimCat, leftWork, saveMemo, signOut, undoLeftWork } from "./actions";
 
 export interface TodayCat {
   cat: Cat;
@@ -40,7 +40,9 @@ export function TodayView({
   myCat,
   myName,
   items,
+  needsClaim = false,
 }: {
+  needsClaim?: boolean;
   dayLabel: string;
   cats: TodayCat[];
   line: string;
@@ -93,6 +95,8 @@ export function TodayView({
           <ImageSlot id="yaongi-button" size={44} cat={myCat} />
         </button>
       </header>
+
+      {needsClaim ? <Welcome /> : null}
 
       {/* The two of us. 양초 left, 토위 right, always. */}
       <section aria-label="오늘 우리" className="mt-6 grid grid-cols-2 gap-3">
@@ -205,6 +209,46 @@ export function TodayView({
 
       <Celebrate message={cheer} onDone={done} />
     </main>
+  );
+}
+
+/**
+ * The short welcome (brief §1 "온보딩은 짧은 환영 한 장"): shown only until we
+ * know which cat this person is — when the Google name was not 양초 or 토위.
+ * One tap, once; the other one's cat is settled by the same answer.
+ */
+function Welcome() {
+  const [pending, startTransition] = useTransition();
+  return (
+    <section
+      aria-labelledby="welcome-title"
+      className="toast-in mt-5 flex flex-col items-center gap-4 px-5 py-5 text-center"
+      style={{ background: "var(--color-clay-card)", borderRadius: "var(--radius-clay-lg)", boxShadow: "var(--shadow-clay-lift)" }}
+    >
+      <h2 id="welcome-title" className="text-xl text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
+        어서 와요! 나는 누구예요?
+      </h2>
+      <div className="flex w-full gap-3">
+        {(["yangcho", "towee"] as Cat[]).map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            disabled={pending}
+            onClick={() => startTransition(() => claimCat(cat))}
+            className="press flex min-h-24 flex-1 flex-col items-center justify-center gap-2 py-3 text-base font-semibold text-clay-ink disabled:opacity-50"
+            style={{
+              borderRadius: "var(--radius-clay)",
+              background: `color-mix(in srgb, ${ACCENT[cat]} 12%, white)`,
+              boxShadow: `inset 0 0 0 2px ${ACCENT[cat]}`,
+            }}
+          >
+            <ImageSlot id={CAT_FACE_ID[cat]} size={48} cat={cat} />
+            {cat === "yangcho" ? "양초" : "토위"}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-clay-ink-soft">한 번만 물어봐요</p>
+    </section>
   );
 }
 

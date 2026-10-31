@@ -142,7 +142,21 @@ describe("who is which cat", () => {
       "b",
     );
     expect(c.me.cat).toBe("yangcho");
-    expect(c.partner?.name).toBe("Tony");
+    // Named 양초 and 토위 in the UI, never by the Google profile (CLAUDE.md).
+    expect(c.partner?.name).toBe("토위");
+    expect(c.claimed).toBe(true);
+  });
+
+  it("knows when it is only guessing, so Today can ask once", () => {
+    const guess = resolveCouple(
+      [
+        { id: "a", display_name: "Tony", cat: null },
+        { id: "b", display_name: "Gee", cat: null },
+      ],
+      "b",
+    );
+    expect(guess.claimed).toBe(false);
+    expect([guess.me.name, guess.partner?.name].sort()).toEqual(["양초", "토위"]);
   });
 
   it("still renders for the first of us alone", () => {

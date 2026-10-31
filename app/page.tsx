@@ -71,6 +71,7 @@ export default async function HomePage() {
         quietPartner: couple.partner && days[couple.partner.cat].mood === null ? couple.partner.name : null,
       })}
       myCat={couple.me.cat}
+      needsClaim={!couple.claimed}
       myName={couple.me.name}
       items={items.map((i) => i.id)}
     />

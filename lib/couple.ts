@@ -15,6 +15,8 @@ export const CATS: readonly Cat[] = ["yangcho", "towee"];
 
 export interface Partner {
   id: string;
+  /** Always 양초 or 토위 — "We are 토위 and 양초 in the UI" (CLAUDE.md),
+   *  whatever name the Google account brought with it. */
   name: string;
   cat: Cat;
 }
@@ -26,9 +28,14 @@ export interface Couple {
   me: Partner;
   /** The other one, or null before the second of us has ever signed in. */
   partner: Partner | null;
+  /**
+   * Whether the signed-in person's cat is *stored* (person.cat) rather than
+   * guessed. False shows the one-time "나는 누구예요?" welcome on Today.
+   */
+  claimed: boolean;
 }
 
-/** Display names, for a cat that has not been claimed yet. */
+/** How each of us is named everywhere in the app. */
 export const CAT_NAME: Record<Cat, string> = { yangcho: "양초", towee: "토위" };
 
 interface PersonRow {
@@ -42,7 +49,8 @@ interface PersonRow {
  *
  * `person.cat` is the answer (migration 009). A row without one falls back to
  * its display name, and only then to sign-up order — 양초 first — so a fresh
- * database still renders rather than refusing to.
+ * database still renders rather than refusing to. A guess is only a guess:
+ * `claimed` says so, and Today asks once (`claim_cat`).
  */
 export function resolveCouple(rows: PersonRow[], meId: string): Couple {
   const byCat: Partial<Record<Cat, Partner>> = {};
@@ -52,13 +60,13 @@ export function resolveCouple(rows: PersonRow[], meId: string): Couple {
     const cat =
       row.cat ??
       (row.display_name === "양초" ? "yangcho" : row.display_name === "토위" ? "towee" : null);
-    if (cat && !byCat[cat]) byCat[cat] = { id: row.id, name: row.display_name, cat };
+    if (cat && !byCat[cat]) byCat[cat] = { id: row.id, name: CAT_NAME[cat], cat };
     else unplaced.push(row);
   }
   for (const row of unplaced) {
     const cat = CATS.find((c) => !byCat[c]);
     if (!cat) break;
-    byCat[cat] = { id: row.id, name: row.display_name, cat };
+    byCat[cat] = { id: row.id, name: CAT_NAME[cat], cat };
   }
 
   const all = CATS.map((c) => byCat[c]).filter((p): p is Partner => Boolean(p));
@@ -70,6 +78,7 @@ export function resolveCouple(rows: PersonRow[], meId: string): Couple {
     towee: byCat.towee ?? null,
     me,
     partner: all.find((p) => p.id !== meId) ?? null,
+    claimed: rows.some((r) => r.id === meId && r.cat !== null),
   };
 }
 

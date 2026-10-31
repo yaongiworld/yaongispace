@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { asPerson } from "@/lib/as-person";
 import { currentPersonId } from "@/lib/auth/current-person";
 import { SESSION_COOKIE } from "@/lib/auth/session";
 import { isLeaveMinute } from "@/lib/today/clock";
@@ -53,6 +54,14 @@ export async function saveMemo(body: string, day?: string): Promise<void> {
   const target = day && isDay(day) && day <= today() ? day : today();
   await setMemo(await me(), target, String(body ?? ""));
   refresh();
+}
+
+/** The one-time welcome: "나는 양초 / 토위예요". See claim_cat in 009. */
+export async function claimCat(cat: string): Promise<void> {
+  if (cat !== "yangcho" && cat !== "towee") return;
+  const personId = await me();
+  await asPerson(personId, (c) => c.query("SELECT claim_cat($1)", [cat]));
+  revalidatePath("/", "layout");
 }
 
 /** The one setting that does something: leave this phone. */

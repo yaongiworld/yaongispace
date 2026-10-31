@@ -238,7 +238,9 @@ create trigger workout_keeps_its_author
 --   workout_for  the other one logged a workout *for you* ("기록해줬어요 💌")
 --
 -- Same columns, same rules as 007: never your own doing, a rolling window,
--- read as the caller. These rows have no Entry, so `entry_id` and
+-- read as the caller. One change for every kind, old ones included: the name
+-- is 양초 or 토위 once a cat is known — "We are 토위 and 양초 in the UI"
+-- (CLAUDE.md), not whatever the Google profile says. These rows have no Entry, so `entry_id` and
 -- `source_id` are stable ids made up from the row's key — unique per kind
 -- and per day, which is all the feed's grouping needs.
 create or replace view news with (security_invoker = true) as
@@ -248,7 +250,8 @@ create or replace view news with (security_invoker = true) as
          e.title,
          e.text,
          e.person_id,
-         p.display_name                                    as person_name,
+         coalesce(case p.cat when 'yangcho' then '양초' when 'towee' then '토위' end, p.display_name)
+                                                           as person_name,
          e.journey_id,
          j.title                                           as journey_title,
          news_arrived_at(e.kind, e.source_id, e.created_at) as arrived_at
@@ -265,7 +268,7 @@ create or replace view news with (security_invoker = true) as
          m.mood,
          '',
          m.person_id,
-         p.display_name,
+         coalesce(case p.cat when 'yangcho' then '양초' when 'towee' then '토위' end, p.display_name),
          null::uuid,
          null::text,
          m.updated_at
@@ -284,7 +287,7 @@ create or replace view news with (security_invoker = true) as
          end,
          '',
          o.person_id,
-         p.display_name,
+         coalesce(case p.cat when 'yangcho' then '양초' when 'towee' then '토위' end, p.display_name),
          null::uuid,
          null::text,
          o.updated_at
@@ -300,7 +303,7 @@ create or replace view news with (security_invoker = true) as
          w.exercise_id,
          '',
          w.entered_by,
-         p.display_name,
+         coalesce(case p.cat when 'yangcho' then '양초' when 'towee' then '토위' end, p.display_name),
          null::uuid,
          null::text,
          w.created_at
@@ -313,3 +316,43 @@ create or replace view news with (security_invoker = true) as
 
 comment on view news is
   'What the other one of us has been up to lately. Derived from Entries and the day tables, ordered by arrival, never stored (ADR-0015).';
+
+-- ---------------------------------------------------------------------------
+-- Saying which cat you are
+-- ---------------------------------------------------------------------------
+
+-- The backfill above only knows the display names 양초 and 토위. If a Google
+-- account brought another name, Today asks once — "나는 누구예요?" — and this
+-- records the answer. It can only ever fill an empty cat, only your own, and
+-- only one nobody has taken; with exactly two of us it gives the other one
+-- the remaining cat at the same time, so the question is asked once, not twice.
+create function claim_cat(p_cat text) returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_me    uuid := current_person_id();
+  v_other text;
+begin
+  if v_me is null or p_cat not in ('yangcho', 'towee') then
+    return null;
+  end if;
+  update person set cat = p_cat
+   where id = v_me and cat is null
+     and not exists (select 1 from person where cat = p_cat);
+  if (select count(*) from person) = 2 then
+    v_other := case p_cat when 'yangcho' then 'towee' else 'yangcho' end;
+    update person set cat = v_other
+     where id <> v_me and cat is null
+       and not exists (select 1 from person where cat = v_other);
+  end if;
+  return (select cat from person where id = v_me);
+end;
+$$;
+
+comment on function claim_cat (text) is
+  'Say which cat you are, once: fills only an empty, untaken cat (and the other one''s, when there are two of us).';
+
+revoke execute on function claim_cat (text) from public;
+grant execute on function claim_cat (text) to yaongi_signed_in;

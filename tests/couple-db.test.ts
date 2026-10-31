@@ -227,6 +227,44 @@ describe("Era", () => {
   });
 });
 
+describe("saying which cat you are (claim_cat)", () => {
+  // Not through `asPerson`, which rolls back: a claim has to stick for the
+  // next one to see it. The claim is set for the session and cleared after.
+  const claim = async (person: string, cat: string) => {
+    await db.query("SELECT set_config('request.jwt.claims', $1, false)", [JSON.stringify({ person_id: person })]);
+    try {
+      return (await db.query("SELECT claim_cat($1) AS cat", [cat])).rows[0].cat;
+    } finally {
+      await db.query("SELECT set_config('request.jwt.claims', '', false)");
+    }
+  };
+
+  test("one answer settles both of us", async () => {
+    await db.query("UPDATE person SET display_name = 'Gee' WHERE id = $1", [yangcho]);
+    await db.query("UPDATE person SET display_name = 'Tony' WHERE id = $1", [towee]);
+    expect(await claim(yangcho, "yangcho")).toBe("yangcho");
+    const { rows } = await db.query("SELECT id, cat FROM person ORDER BY cat");
+    expect(rows).toEqual([
+      { id: towee, cat: "towee" },
+      { id: yangcho, cat: "yangcho" },
+    ]);
+  });
+
+  test("cannot take a cat that is taken, nor change one already set", async () => {
+    await claim(towee, "towee");
+    expect(await claim(yangcho, "towee")).toBe("yangcho"); // already settled by the first answer
+    expect(await claim(towee, "yangcho")).toBe("towee");
+  });
+
+  test("names in News are 양초 and 토위 once the cats are known", async () => {
+    await db.query("UPDATE person SET display_name = 'Gee', cat = 'yangcho' WHERE id = $1", [yangcho]);
+    await db.query("UPDATE person SET display_name = 'Tony', cat = 'towee' WHERE id = $1", [towee]);
+    await todayStore.setMood(yangcho, DAY, "happy");
+    const names = await asPerson(db, towee, async () => (await db.query("SELECT person_name FROM news")).rows);
+    expect(names).toEqual([{ person_name: "양초" }]);
+  });
+});
+
 describe("News, widened (충돌 6)", () => {
   test("the other one's mood and leaving time are News; your own are not", async () => {
     await todayStore.setMood(yangcho, DAY, "happy");
