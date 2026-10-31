@@ -1,4 +1,5 @@
 import type { NewsGroup } from "./news";
+import { moodOf } from "./today/moods";
 
 /**
  * What face the cat is wearing, and the one line under it.
@@ -136,6 +137,17 @@ function captionFor(group: NewsGroup): string {
     : "";
 
   switch (first.kind) {
+    /* The couple app's three kinds (migration 009, brief 충돌 6). */
+    case "mood": {
+      const face = moodOf(first.title);
+      return face ? `${who}는 오늘 ${face.emoji} ${face.label}` : `${who}가 기분을 남겼어요`;
+    }
+    case "offwork":
+      return first.title === "left"
+        ? `${who}가 회사에서 나왔어요`
+        : `${who}는 ${first.title}에 나올 거래요`;
+    case "workout_for":
+      return `${who}가 기록해줬어요 💌`;
     case "photo":
       return `${who}가 ${where}사진 ${count}장을 올렸어요`;
     case "visit":
