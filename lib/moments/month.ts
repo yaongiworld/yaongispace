@@ -21,9 +21,11 @@ export function shiftMonth(month: Month, n: number): Month {
   return d.toISOString().slice(0, 7);
 }
 
-export function monthLabel(month: Month): string {
+/** "11월" in the current year, "2025년 11월" otherwise — short enough that
+ *  the Moments header fits a 320px phone. */
+export function monthLabel(month: Month, thisYear?: number): string {
   const [y, m] = month.split("-").map(Number);
-  return `${y}년 ${m}월`;
+  return y === thisYear ? `${m}월` : `${y}년 ${m}월`;
 }
 
 export interface Cell {
