@@ -55,11 +55,15 @@ export default async function EraPage() {
             <h2 id="era-south-america" className="text-xl text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
               남미
             </h2>
-            <span className="text-xs text-clay-ink-soft">
+            <span className="text-xs whitespace-nowrap text-clay-ink-soft">
               {p.lap}회차 · 코스 {p.trailNumber}/{PASSPORT_TRAILS.length}
             </span>
           </div>
-          <span className="text-3xl text-clay-ink tabular-nums" style={{ fontFamily: "var(--font-display)" }}>
+          {/* Smaller once laps pile up, so 482.1% still leaves the name room. */}
+          <span
+            className={`${p.percentTenths >= 1000 ? "text-2xl" : "text-3xl"} shrink-0 text-clay-ink tabular-nums`}
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             {formatPercent(p.percentTenths)}
             <span className="text-base">%</span>
           </span>

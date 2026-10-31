@@ -72,6 +72,9 @@ export const viewport: Viewport = {
    * indicator. Removing this silently breaks the bar's spacing on iPhone.
    */
   viewportFit: "cover",
+  /* Android's keyboard shrinks the layout, as iOS's does, so a sheet with an
+     input (memo, anniversary) rises above the keyboard instead of under it. */
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

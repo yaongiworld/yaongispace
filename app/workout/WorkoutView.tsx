@@ -139,7 +139,7 @@ export function WorkoutView({
               role="radio"
               aria-checked={on}
               onClick={() => setFilter(f)}
-              className="press min-h-11 flex-1 px-3 text-sm font-semibold"
+              className="press min-h-11 min-w-0 flex-1 truncate px-3 text-sm font-semibold"
               style={{
                 borderRadius: "var(--radius-clay-pill)",
                 background: on ? `color-mix(in srgb, ${accent} 16%, white)` : "var(--color-clay-card-quiet)",
@@ -242,7 +242,9 @@ function Row({
     >
       <ImageSlot id={CAT_FACE_ID[cat]} size={36} cat={cat} />
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm text-clay-ink">
+        {/* Two lines rather than an ellipsis: 불가리안 스플릿 스쿼트 is the
+            whole point of the row at 320px. */}
+        <span className="line-clamp-2 text-sm leading-snug text-clay-ink">
           <span aria-hidden>{ex?.emoji} </span>
           {ex?.label ?? row.exerciseId}
           {forOther ? (
@@ -368,7 +370,7 @@ function WorkoutForm({
   const partner = people.find((p) => !p.isMe);
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
+    <div className="flex flex-col gap-3 pb-2">
       {/* 누구 거예요? — 나 by default (brief §4), fixed once written — and
           when, on one line so the wheels stay on screen on a short phone. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -384,11 +386,11 @@ function WorkoutForm({
                 role="radio"
                 aria-checked={ownerId === p.id}
                 onClick={() => switchOwner(p.id)}
-                className="press flex min-h-11 items-center gap-1.5 pr-3 pl-1.5 text-sm font-semibold"
+                className="press flex min-h-11 max-w-[9rem] min-w-0 items-center gap-1.5 pr-3 pl-1.5 text-sm font-semibold"
                 style={chip(ownerId === p.id, p.cat)}
               >
                 <ImageSlot id={CAT_FACE_ID[p.cat]} size={28} cat={p.cat} />
-                {p.isMe ? "나" : p.name}
+                <span className="truncate">{p.isMe ? "나" : p.name}</span>
               </button>
             ))}
           </div>

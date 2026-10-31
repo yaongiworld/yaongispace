@@ -7,7 +7,8 @@ import { createPortal } from "react-dom";
  * A sheet that rises from the bottom — the one pattern for every form and
  * every detail in the couple app, so there is only one way things open.
  *
- * Above the tab bar (z-60 over its z-50), at most 88% of the screen, its own
+ * Above the tab bar (z-60 over its z-50), at most 88% of the screen (96% on a
+ * short phone, so a form's wheels clear its pinned button), its own
  * scroll, and the home-indicator inset kept clear. Portalled to <body>: a page
  * that animates in (`.page-in`) is a stacking context, and a sheet rendered
  * inside it would sit *under* the tab bar whatever its z-index. Escape, the backdrop and
@@ -64,7 +65,7 @@ export function Sheet({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="sheet-panel relative flex max-h-[88dvh] w-full max-w-md flex-col outline-none"
+        className="sheet-panel relative flex max-h-[88dvh] w-full max-w-md flex-col outline-none [@media(max-height:700px)]:max-h-[96dvh]"
         style={{
           background: "#fffaf6",
           borderRadius: "var(--radius-clay-lg) var(--radius-clay-lg) 0 0",
@@ -88,7 +89,8 @@ export function Sheet({
             ✕
           </button>
         </div>
-        <div className="overflow-y-auto px-5 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        {/* `overscroll-contain`: the sheet's own bounce, never the page's. */}
+        <div className="overflow-y-auto overscroll-contain px-5 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
           {children}
         </div>
       </div>

@@ -302,7 +302,7 @@ function DayCard({
                 </span>
                 {line ? (
                   <span
-                    className="text-base text-clay-ink"
+                    className="text-base break-words text-clay-ink"
                     style={{ fontFamily: "var(--font-letter)" }}
                   >
                     {line}
@@ -416,9 +416,12 @@ function DayCard({
           value={memo}
           onChange={(ev) => setMemo(ev.target.value)}
           maxLength={80}
-          placeholder="✏️ 한 줄 메모"
+          placeholder="✏️ 한 줄 메모…"
+          name="memo"
+          autoComplete="off"
+          enterKeyHint="done"
           aria-label="내 한 줄 메모"
-          className="min-h-11 min-w-0 flex-1 px-4 text-base text-clay-ink outline-none"
+          className="field min-h-11 min-w-0 flex-1 px-4 text-base text-clay-ink outline-none"
           style={{
             fontFamily: "var(--font-letter)",
             fontSize: 18,
@@ -459,9 +462,12 @@ function DayCard({
             value={annTitle}
             onChange={(ev) => setAnnTitle(ev.target.value)}
             maxLength={40}
-            placeholder="예: 처음 만난 날"
+            placeholder="예: 처음 만난 날…"
+            name="anniversary"
+            autoComplete="off"
+            enterKeyHint="done"
             aria-label="기념일 이름"
-            className="min-h-11 px-4 text-base text-clay-ink outline-none"
+            className="field min-h-11 px-4 text-base text-clay-ink outline-none"
             style={{
               background: "var(--color-clay-card)",
               borderRadius: "var(--radius-clay-pill)",

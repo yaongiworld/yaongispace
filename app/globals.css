@@ -72,6 +72,28 @@ body {
   min-height: 100%;
 }
 
+/* Feeling installed, not embedded (mobile-native pass, 2026-11-01).
+   - No grey flash on tap: every control has its own :active (.press).
+   - No font inflation when the phone turns sideways.
+   - Controls fire on tap without waiting to see if it is a double-tap, and
+     a long press on one does not select its label or pop the link callout.
+     Only controls: body text stays selectable. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+a,
+[role="button"],
+[role="radio"],
+[role="spinbutton"] {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 body {
   background: linear-gradient(
       178deg,
@@ -244,6 +266,14 @@ body {
 }
 .press:active {
   transform: scale(0.94);
+}
+
+/* A keyboard user sees where they are; a finger never does. Text fields drop
+   the browser outline for their own rose ring, so they get one back here. */
+.press:focus-visible,
+.field:focus-visible {
+  outline: 2.5px solid var(--color-clay-berry);
+  outline-offset: 2px;
 }
 
 /* 고양이 폴짝 — a cat that just got good news. */

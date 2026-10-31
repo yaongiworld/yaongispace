@@ -111,7 +111,7 @@ export function TodayView({
       <div className="bubble-in relative mt-6 flex items-start gap-3">
         <ImageSlot id="cat-speaker" size={40} emoji="🐈" />
         <p
-          className="relative flex-1 px-4 py-3 text-base text-clay-ink"
+          className="relative min-w-0 flex-1 px-4 py-3 text-base break-words text-clay-ink"
           style={{
             fontFamily: "var(--font-display)",
             background: "var(--color-clay-card)",
@@ -238,9 +238,10 @@ function CatCard({
         <MoodBadge mood={mood?.emoji ?? null} name={c.name} onClick={onMood} accent={accent} />
       </div>
 
-      <span className="mt-1 max-w-full truncate text-sm font-semibold text-clay-ink">
-        {c.name}
-        {c.isMe ? <span className="ml-1 text-xs font-normal text-clay-ink-soft">나</span> : null}
+      {/* The name may be cut; the "나" beside it never is. */}
+      <span className="mt-1 flex max-w-full items-baseline gap-1 text-sm font-semibold text-clay-ink">
+        <span className="min-w-0 truncate">{c.name}</span>
+        {c.isMe ? <span className="shrink-0 text-xs font-normal text-clay-ink-soft">나</span> : null}
       </span>
 
       <OffworkChip c={c} onClick={onClock} />
@@ -449,9 +450,12 @@ function MemoForm({ initial, onSave }: { initial: string; onSave: (body: string)
         value={body}
         onChange={(e) => setBody(e.target.value)}
         maxLength={80}
-        placeholder="오늘을 한 줄로"
+        placeholder="오늘을 한 줄로…"
         aria-label="한 줄 메모"
-        className="min-h-12 w-full px-4 text-base text-clay-ink outline-none"
+        name="memo"
+        autoComplete="off"
+        enterKeyHint="done"
+        className="field min-h-12 w-full px-4 text-base text-clay-ink outline-none"
         style={{
           fontFamily: "var(--font-letter)",
           fontSize: 20,
