@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SECTIONS } from "./sections";
+import { VISIBLE_SECTIONS } from "./sections";
 
 /**
  * The PWA manifest, served at `/manifest.webmanifest`.
@@ -46,7 +46,7 @@ import { SECTIONS } from "./sections";
  * which is the case that matters: 40 photos after a trip, in one go.
  */
 type ManifestWithShareTarget = MetadataRoute.Manifest & {
-  share_target: {
+  share_target?: {
     action: string;
     method: "POST";
     enctype: "multipart/form-data";
@@ -54,6 +54,23 @@ type ManifestWithShareTarget = MetadataRoute.Manifest & {
       files: { name: string; accept: string[] }[];
     };
   };
+};
+
+/**
+ * Off while 사진 is hidden (2026-11-01). A share target for a section nobody
+ * can see would put 야옹이월드 in the share sheet and land on a page with no
+ * tab lit. `/photos/import` and the service worker are untouched; flip this
+ * back to `true` together with un-hiding 사진 in `sections.ts`.
+ */
+const SHARE_PHOTOS = false;
+
+const PHOTO_SHARE_TARGET: NonNullable<ManifestWithShareTarget["share_target"]> = {
+  action: "/photos/import",
+  method: "POST",
+  enctype: "multipart/form-data",
+  params: {
+    files: [{ name: "photos", accept: ["image/*"] }],
+  },
 };
 
 export default function manifest(): ManifestWithShareTarget {
@@ -105,25 +122,19 @@ export default function manifest(): ManifestWithShareTarget {
     ],
 
     /* Long-pressing the installed icon on Android offers these. Generated from
-       SECTIONS, minus home — home is what tapping the icon already does, so
+       the visible sections, minus home — home is what tapping the icon already does, so
        listing it would be a shortcut to the place you already are. */
-    shortcuts: SECTIONS.filter((s) => s.id !== "home").map((s) => ({
+    shortcuts: VISIBLE_SECTIONS.filter((s) => s.id !== "home").map((s) => ({
       name: s.label,
       short_name: s.label,
       url: s.href,
       icons: [{ src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     })),
 
-    /* Sharing photos into Yaongispace from the phone's photo app.
-       `image/*` rather than a list of types: a phone that invents a new camera
-       format should not silently stop being able to share into the library. */
-    share_target: {
-      action: "/photos/import",
-      method: "POST",
-      enctype: "multipart/form-data",
-      params: {
-        files: [{ name: "photos", accept: ["image/*"] }],
-      },
-    },
+    /* Sharing photos into Yaongispace from the phone's photo app — see
+       SHARE_PHOTOS above. `image/*` rather than a list of types: a phone that
+       invents a new camera format should not silently stop being able to
+       share into the library. */
+    ...(SHARE_PHOTOS ? { share_target: PHOTO_SHARE_TARGET } : {}),
   };
 }

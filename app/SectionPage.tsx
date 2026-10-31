@@ -1,21 +1,21 @@
 /**
  * The frame every section page sits in.
  *
- * Ticket 04 delivers six *empty* themed pages; tickets 05–08 fill them. This
+ * Ticket 04 delivered the empty themed pages; later work fills them. This
  * component exists so that when they do, they inherit the shell's spacing,
  * heading treatment and — importantly — the bottom padding that keeps content
  * clear of the fixed tab bar, without each ticket re-deriving those numbers and
  * getting a slightly different answer.
  *
  * A section fills its page by passing `children`. Passing none renders the
- * placeholder, which is what four of the six do today.
+ * placeholder.
  */
 
 export function SectionPage({
   title,
   children,
 }: {
-  /** The Korean section title. Matches the tab label. */
+  /** The section title. Korean, except the English tab names (brief 충돌 3). */
   title: string;
   children?: React.ReactNode;
 }) {
