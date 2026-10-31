@@ -26,20 +26,20 @@ export async function dayFor(
   day: Day,
 ): Promise<Record<Cat, DayOf>> {
   const ids = [couple.yangcho?.id, couple.towee?.id].filter(Boolean) as string[];
-  const [moods, offwork, memos] = await Promise.all([
-    client.query<{ person_id: string; mood: MoodId }>(
-      "SELECT person_id, mood FROM day_mood WHERE day = $1 AND person_id = ANY($2)",
-      [day, ids],
-    ),
-    client.query<{ person_id: string; leave_minute: number | null; left_at: Date | null }>(
-      "SELECT person_id, leave_minute, left_at FROM day_offwork WHERE day = $1 AND person_id = ANY($2)",
-      [day, ids],
-    ),
-    client.query<{ person_id: string; body: string }>(
-      "SELECT person_id, body FROM day_memo WHERE day = $1 AND person_id = ANY($2)",
-      [day, ids],
-    ),
-  ]);
+  // One after another: these share a single client (one transaction), and
+  // pg does not run two queries on one client at once.
+  const moods = await client.query<{ person_id: string; mood: MoodId }>(
+    "SELECT person_id, mood FROM day_mood WHERE day = $1 AND person_id = ANY($2)",
+    [day, ids],
+  );
+  const offwork = await client.query<{ person_id: string; leave_minute: number | null; left_at: Date | null }>(
+    "SELECT person_id, leave_minute, left_at FROM day_offwork WHERE day = $1 AND person_id = ANY($2)",
+    [day, ids],
+  );
+  const memos = await client.query<{ person_id: string; body: string }>(
+    "SELECT person_id, body FROM day_memo WHERE day = $1 AND person_id = ANY($2)",
+    [day, ids],
+  );
 
   const of = (personId: string | undefined): DayOf => {
     if (!personId) return { ...EMPTY };
