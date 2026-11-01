@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import manifest from "../app/manifest";
-import { SECTIONS } from "../app/sections";
+import { SECTIONS, VISIBLE_SECTIONS } from "../app/sections";
 
 /**
  * Tests for the tab shell and the PWA manifest (ticket 04).
@@ -14,7 +14,7 @@ import { SECTIONS } from "../app/sections";
  * What is deliberately *not* tested here: how the tab bar looks, and whether
  * the app actually installs. Rendering `TabBar` would need jsdom, a router mock
  * and `next/link` stubbing, and having paid for all that the assertion would be
- * "it rendered six links" — which is what `SECTIONS.length` already tells us.
+ * "it rendered five links" — which is what `VISIBLE_SECTIONS` already tells us.
  * Installability is a property of a real browser on a real phone and cannot be
  * honestly asserted in vitest; it was verified by hand instead (see the ticket
  * report).
@@ -29,22 +29,34 @@ const repoRoot = join(__dirname, "..");
 const appDir = join(repoRoot, "app");
 const publicDir = join(repoRoot, "public");
 
-/** The six sections the ticket names, in tab order. */
-const EXPECTED_SECTION_IDS = [
-  "home",
-  "letters",
-  "photos",
-  "map",
-  "calendar",
-  "recall",
+/** The five tabs of the couple app (brief §3, 충돌 3), in tab order. */
+const EXPECTED_TABS = [
+  { id: "home", href: "/", label: "Today" },
+  { id: "workout", href: "/workout", label: "Workout" },
+  { id: "era", href: "/era", label: "Era" },
+  { id: "moments", href: "/moments", label: "Moments" },
+  { id: "letters", href: "/letters", label: "Letters" },
 ];
 
-describe("the six sections", () => {
-  it("are exactly the six the ticket names, in order", () => {
-    expect(SECTIONS.map((s) => s.id)).toEqual(EXPECTED_SECTION_IDS);
+/** Hidden from the bar, kept in the code — and switchable back with one line. */
+const EXPECTED_HIDDEN = ["photos", "map", "calendar", "recall"];
+
+describe("the sections", () => {
+  it("shows exactly the five tabs, in order, with their English labels", () => {
+    expect(
+      VISIBLE_SECTIONS.map(({ id, href, label }) => ({ id, href, label })),
+    ).toEqual(EXPECTED_TABS);
   });
 
-  it("every tab points at a route that exists, so a tab cannot 404", () => {
+  it("keeps the old sections, hidden rather than deleted", () => {
+    expect(SECTIONS.filter((s) => s.hidden).map((s) => s.id)).toEqual(
+      EXPECTED_HIDDEN,
+    );
+  });
+
+  it("every section, hidden or not, points at a route that exists", () => {
+    // A hidden section still has to be one line away from coming back, which
+    // it is not if its page has quietly been deleted.
     for (const section of SECTIONS) {
       // "/" is app/page.tsx; "/letters" is app/letters/page.tsx.
       const pagePath =
@@ -56,20 +68,9 @@ describe("the six sections", () => {
     }
   });
 
-  it("labels are Korean, since the app has no language switcher", () => {
-    for (const section of SECTIONS) {
-      // Hangul syllables block. A label that regressed to English or to a
-      // placeholder would fail here.
-      expect(section.label, section.id).toMatch(/^[가-힣]+$/);
-    }
-  });
-
-  it("labels are short enough for six tabs to fit a phone", () => {
-    // Two syllables each — the constraint that makes six tabs comfortable at
-    // 360px. See the comment in sections.ts. Three would need either smaller
-    // type or truncation.
-    for (const section of SECTIONS) {
-      expect(section.label.length, section.id).toBeLessThanOrEqual(2);
+  it("tab labels are single English words — fixed text, not a language switch", () => {
+    for (const section of VISIBLE_SECTIONS) {
+      expect(section.label, section.id).toMatch(/^[A-Z][a-z]+$/);
     }
   });
 
@@ -119,12 +120,13 @@ describe("the PWA manifest", () => {
     expect(purposes).toContain("any");
   });
 
-  it("declares a shortcut per section except home", () => {
+  it("declares a shortcut per visible tab except home", () => {
     // Home is what tapping the icon already does; a shortcut to it would be a
-    // shortcut to where you already are.
+    // shortcut to where you already are. Hidden sections get none — a
+    // long-press menu is just another way to see a tab.
     const shortcutUrls = (m.shortcuts ?? []).map((s) => s.url);
     expect(shortcutUrls).toEqual(
-      SECTIONS.filter((s) => s.id !== "home").map((s) => s.href),
+      VISIBLE_SECTIONS.filter((s) => s.id !== "home").map((s) => s.href),
     );
   });
 
@@ -135,30 +137,22 @@ describe("the PWA manifest", () => {
     expect(m.background_color).toBe("#fff4e9");
   });
 
-  it("declares a share target, so photos arrive from the phone's photo app", () => {
-    // Ticket 04 asserted this was *absent*, because a target pointing at a
-    // route that does not exist appears in the share sheet and then fails when
-    // chosen. Ticket 08 built `/photos/import`, so the assertion flips rather
-    // than being deleted — what it guards is unchanged: the target and the
-    // route it names must agree.
-    const target = (m as unknown as { share_target?: Record<string, unknown> })
-      .share_target;
-    expect(target).toBeDefined();
-
-    // Files need a POST with multipart/form-data. A GET share target can carry
-    // a title and a URL, but not bytes.
-    expect(target?.method).toBe("POST");
-    expect(target?.enctype).toBe("multipart/form-data");
-
-    const params = target?.params as { files?: { name: string; accept: string[] }[] };
-    expect(params.files?.[0].accept).toContain("image/*");
+  it("declares no share target while 사진 is hidden", () => {
+    // Ticket 08 added the share target; the couple app hides 사진 (brief §3)
+    // and turns the target off with it (2026-11-01), so the share sheet does
+    // not offer a section nobody can see. The switch is SHARE_PHOTOS in
+    // app/manifest.ts.
+    const target = (m as unknown as { share_target?: unknown }).share_target;
+    expect(target).toBeUndefined();
+    expect(SECTIONS.find((s) => s.id === "photos")?.hidden).toBe(true);
   });
 
-  it("points the share target at a route that exists, so the share sheet cannot 404", () => {
-    // The same guard the tab bar gets, for the same reason — and the specific
-    // failure ticket 04 was avoiding by leaving this out.
-    const target = (m as unknown as { share_target?: { action?: string } }).share_target;
-    const action = target?.action ?? "";
+  it("keeps the share target's route, so switching it back on cannot 404", () => {
+    // The guard the old assertion carried, kept for the day it comes back:
+    // the route the target names must still exist.
+    const manifestSource = readFileSync(join(appDir, "manifest.ts"), "utf8");
+    const action = /action: "([^"]+)"/.exec(manifestSource)?.[1] ?? "";
+    expect(action).toBe("/photos/import");
     expect(existsSync(join(appDir, action.replace(/^\//, ""), "route.ts"))).toBe(true);
   });
 });

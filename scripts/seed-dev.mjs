@@ -34,8 +34,10 @@ if (people.rows[0].n > 0) {
   // The allowlist is a table, not a constant — these are the rows that would
   // admit us once a real Google OAuth client exists. Addresses are
   // placeholders; edit them to your own before signing in for real.
+  // `cat` says which of the two cats is whose (migration 009). Set here
+  // because these rows are created after the migration's backfill ran.
   const { rows } = await db.query(
-    `INSERT INTO person (display_name) VALUES ('토위'), ('양초') RETURNING id, display_name`,
+    `INSERT INTO person (display_name, cat) VALUES ('토위', 'towee'), ('양초', 'yangcho') RETURNING id, display_name`,
   );
   for (const p of rows) {
     const email = p.display_name === "토위" ? "towee@example.com" : "yangcho@example.com";

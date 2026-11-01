@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SECTIONS } from "./sections";
+import { VISIBLE_SECTIONS } from "./sections";
 
 /**
  * The tab bar — the app's primary and only navigation.
@@ -21,24 +21,22 @@ import { SECTIONS } from "./sections";
  * column rather than growing into a sidebar, because a sidebar would be a
  * second navigation design to maintain for a surface neither of us uses much.
  *
- * ## Fitting six on a phone
+ * ## Fitting five on a phone
  *
- * Six was a deliberate count, not a limit we squeezed past. The bar earns the
- * room three ways, and all three matter — remove one and it gets tight at
- * 360px:
+ * The bar earns the room three ways:
  *
- *   1. **Two-syllable Korean labels** (see `sections.ts`) — no truncation, no
- *      shrinking type below 10px.
+ *   1. **Short English labels** (see `sections.ts`) — the longest, "Moments",
+ *      is ~44px at 10px semibold, inside a ~62px tab at 320px. `truncate` is
+ *      still on the label as a guard: a clipped word is ugly, a label that
+ *      pushes its neighbours off-screen is broken.
  *   2. **`flex-1` tabs with no horizontal padding of their own.** Each tab is
- *      an equal sixth of the bar and its tap target is that whole sixth. The
+ *      an equal fifth of the bar and its tap target is that whole fifth. The
  *      visual gap between tabs is whitespace inside the target, not margin
- *      between targets, so the touch targets stay contiguous — there is no
- *      dead pixel between two tabs to mis-tap into.
- *   3. **Icon above label**, not beside it. Stacking is what makes six fit; a
- *      row of icon+label pairs would need roughly double the width.
+ *      between targets, so there is no dead pixel to mis-tap into.
+ *   3. **Icon above label**, not beside it.
  *
- * Each tab is ~60px wide and 52px tall at 360px, comfortably over the 44px
- * minimum touch target on both platforms.
+ * Each tab is ~62px wide and 52px tall at 320px, over the 44px minimum touch
+ * target on both platforms.
  */
 export function TabBar() {
   const pathname = usePathname();
@@ -62,9 +60,9 @@ export function TabBar() {
       }}
     >
       <ul className="mx-auto flex max-w-md items-stretch px-1">
-        {SECTIONS.map(({ id, href, label, Icon }) => {
+        {VISIBLE_SECTIONS.map(({ id, href, label, Icon }) => {
           /* Home is an exact match; every other section also owns its
-             subpaths, so `/letters/42` keeps the 편지 tab lit. Doing this with
+             subpaths, so `/letters/42` keeps the Letters tab lit. Doing this with
              `startsWith` on `/` alone would light home on every page. */
           const isCurrent =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -84,10 +82,13 @@ export function TabBar() {
                 }}
               >
                 <Icon size={24} />
-                {/* 10px is small, but these are two-syllable Hangul labels
-                    beneath a 24px icon that already carries the meaning — the
-                    label is confirmation, not the primary signal. */}
-                <span className="text-[10px] leading-none font-semibold">
+                {/* 10px is small, but these are one-word labels beneath a
+                    24px icon that already carries the meaning — the label is
+                    confirmation, not the primary signal. */}
+                <span
+                  data-tab-label
+                  className="max-w-full truncate px-0.5 text-[10px] leading-none font-semibold tracking-tight"
+                >
                   {label}
                 </span>
               </Link>
