@@ -11,7 +11,7 @@ import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
 import { useDayRollover } from "../ui/useDayRollover";
-import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, saveMemo, signOut, undoLeftWork } from "./actions";
+import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, pokePartner, saveMemo, signOut, undoLeftWork } from "./actions";
 
 export interface TodayCat {
   cat: Cat;
@@ -45,9 +45,12 @@ export function TodayView({
   myName,
   items,
   needsClaim = false,
+  pokesLeft = null,
   together = { moods: false, moved: false },
   speaker = null,
 }: {
+  /** 콕 left today, or null when 콕 is off or there is nobody to poke. */
+  pokesLeft?: number | null;
   /** Both of us pressed a face / moved today. */
   together?: { moods: boolean; moved: boolean };
   /** The other one's cat says the line, wearing today's face. */
@@ -69,9 +72,13 @@ export function TodayView({
   const [bigCheer, setBigCheer] = useState(false);
   /** Every cheer says whether it is the big kind, so a small one never
    *  inherits the confetti of the one before it. */
+  // Each cheer is its own toast, even when it says the same thing as the
+  // last one (a second 콕): the key remounts it, so it pops again.
+  const [cheerId, setCheerId] = useState(0);
   const say = useCallback((message: string, big = false) => {
     setBigCheer(big);
     setCheer(message);
+    setCheerId((n) => n + 1);
   }, []);
 
   // A day both of us moved (or both pressed a face) gets one cheer, once —
@@ -91,6 +98,22 @@ export function TodayView({
     say(kind === "moved" ? "둘 다 해냈어요!" : "둘이 함께 오늘을 남겼어요 💞", true);
   }, [day, together.moved, together.moods, say]);
   const [hop, setHop] = useState(0);
+  const [wiggle, setWiggle] = useState(0);
+  const [pokes, setPokes] = useState(pokesLeft);
+
+  // 콕: the other one's cat wiggles here, and says so on their Today next
+  // time they open the app. Three a day; the fourth just says "내일 또".
+  const poke = (name: string) => {
+    if (pokes === null) return;
+    if (pokes <= 0) return say("오늘 콕은 다 썼어요 · 내일 또! 🌙");
+    setWiggle((n) => n + 1);
+    setPokes(pokes - 1);
+    say(`👉 ${name}를 콕!`);
+    startTransition(async () => {
+      const left = await pokePartner();
+      if (left !== null) setPokes(left);
+    });
+  };
   const [, startTransition] = useTransition();
 
   // My own card answers a tap at once; the server catches up behind it.
@@ -144,7 +167,10 @@ export function TodayView({
           <CatCard
             key={c.cat}
             c={c}
-            hop={c.isMe ? hop : 0}
+            hop={c.isMe ? hop : wiggle}
+            wiggle={!c.isMe}
+            onPoke={!c.isMe && pokes !== null && c.present ? () => poke(c.name) : undefined}
+            pokeHint={!c.isMe && pokes === 3}
             onMood={c.isMe ? () => setOpen("mood") : undefined}
             onClock={c.isMe ? () => setOpen("clock") : undefined}
             onProtein={
@@ -263,7 +289,7 @@ export function TodayView({
         <YaongiSheet myCat={myCat} myName={myName} unlocked={items} />
       </Sheet>
 
-      <Celebrate message={cheer} onDone={done} big={bigCheer} />
+      <Celebrate key={cheerId} message={cheer} onDone={done} big={bigCheer} />
     </main>
   );
 }
@@ -321,9 +347,18 @@ function CatCard({
   onMood,
   onClock,
   onProtein,
+  onPoke,
+  wiggle = false,
+  pokeHint = false,
 }: {
+  /** Say once a day, quietly, that the other one's cat can be poked. */
+  pokeHint?: boolean;
   c: TodayCat;
   hop: number;
+  /** Animate a change of `hop` as a 콕 wiggle rather than a happy hop. */
+  wiggle?: boolean;
+  /** The other one's cat: tap it to 콕. */
+  onPoke?: () => void;
   onMood?: () => void;
   onClock?: () => void;
   onProtein?: () => void;
@@ -350,8 +385,12 @@ function CatCard({
         boxShadow: `var(--shadow-clay), inset 0 3px 0 color-mix(in srgb, ${accent} 45%, transparent)`,
       }}
     >
-      <div key={hop} className={hop ? "cat-hop relative" : "relative"} data-mood={c.mood ?? "none"}>
-        {onMood ? (
+      <div key={hop} className={hop ? (wiggle ? "poke-wiggle relative" : "cat-hop relative") : "relative"} data-mood={c.mood ?? "none"}>
+        {onPoke ? (
+          <button type="button" onClick={onPoke} aria-label={`${c.name} 콕 찌르기`} className="press block rounded-full">
+            {face}
+          </button>
+        ) : onMood ? (
           <button
             type="button"
             onClick={onMood}
@@ -404,6 +443,9 @@ function CatCard({
       )}
 
       <OffworkChip c={c} onClick={onClock} />
+      {onPoke && pokeHint ? (
+        <span className="-mb-1 text-[11px] text-clay-ink-soft">👉 얼굴을 톡 하면 콕</span>
+      ) : null}
     </article>
   );
 }

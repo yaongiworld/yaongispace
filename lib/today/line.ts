@@ -61,7 +61,7 @@ function rank(g: NewsGroup): number {
   const first = g.items[0];
   if (first.kind === "letter") return 0;
   if (g.items.some((i) => i.imminent)) return 1;
-  if (first.kind === "workout_for") return 2;
+  if (first.kind === "workout_for" || first.kind === "poke") return 2;
   if (first.kind === "mood" || first.kind === "offwork") return 4;
   return 3;
 }

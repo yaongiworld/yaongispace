@@ -324,3 +324,39 @@ describe("the protein counter (010)", () => {
     expect(await newsAs(towee)).toEqual([]);
   });
 });
+
+describe("콕 찌르기 (011)", () => {
+  let poke: typeof import("@/lib/poke");
+  beforeAll(async () => {
+    poke = await import("@/lib/poke");
+  });
+
+  test("three a day, then it says so instead of a fourth", async () => {
+    expect(await poke.sendPoke(yangcho, towee, DAY)).toBe(2);
+    expect(await poke.sendPoke(yangcho, towee, DAY)).toBe(1);
+    expect(await poke.sendPoke(yangcho, towee, DAY)).toBe(0);
+    expect(await poke.sendPoke(yangcho, towee, DAY)).toBeNull();
+    expect((await db.query("SELECT count(*)::int AS n FROM poke")).rows[0].n).toBe(3);
+    // A new day, three more.
+    expect(await poke.sendPoke(yangcho, towee, "2026-11-02")).toBe(2);
+  });
+
+  test("not yourself, and never as the other one", async () => {
+    await expect(db.query("INSERT INTO poke (from_person, to_person, day) VALUES ($1, $1, $2)", [towee, DAY])).rejects.toThrow(/check/);
+    await expect(
+      asPerson(db, yangcho, () =>
+        db.query("INSERT INTO poke (from_person, to_person, day) VALUES ($1, $2, $3)", [towee, yangcho, DAY]),
+      ),
+    ).rejects.toThrow(/row-level security/);
+  });
+
+  test("is News to the one poked, from the one who poked — and to nobody else", async () => {
+    await poke.sendPoke(yangcho, towee, DAY);
+    await poke.sendPoke(yangcho, towee, DAY);
+    expect(await newsAs(towee)).toEqual([
+      { kind: "poke", title: null, person_id: yangcho },
+      { kind: "poke", title: null, person_id: yangcho },
+    ]);
+    expect(await newsAs(yangcho)).toEqual([]);
+  });
+});
