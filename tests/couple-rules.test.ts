@@ -21,6 +21,7 @@ import { addDays, isDay, relativeDayLabel, today, weekStart } from "../lib/today
 import { DEFAULT_LEAVE_MINUTE, LEAVE_MINUTES, clockLabel, isLeaveMinute } from "../lib/today/clock";
 import { MOODS } from "../lib/today/moods";
 import { ERAS } from "../lib/era/eras";
+import { dailyWord } from "../lib/today/word";
 import { hearthFor } from "../lib/mood";
 import { catLine } from "../lib/today/line";
 import type { NewsGroup } from "../lib/news";
@@ -271,6 +272,7 @@ describe("the cat's line for the new News kinds (충돌 6)", () => {
     expect(hearthFor([group("offwork", "left")]).caption).toBe("토위가 회사에서 나왔어요");
     expect(hearthFor([group("workout_for", "crunch")]).caption).toBe("토위가 기록해줬어요 💌");
     expect(hearthFor([group("poke", null)]).caption).toBe("토위가 콕 찔렀어요 👉");
+    expect(hearthFor([group("miss", null)]).caption).toBe("토위가 보고싶대요 💗");
   });
 });
 
@@ -354,5 +356,18 @@ describe("the cat wears today's mood", () => {
     const { catFace } = await import("../lib/today/moods");
     expect(MOODS.map((m) => catFace(m.id))).toEqual(["😸", "😻", "😽", "🙀", "😿", "😾"]);
     expect(catFace(null)).toBe("🐱");
+  });
+});
+
+describe("오늘의 한마디", () => {
+  it("is the same for both of us on a day, and changes across days", () => {
+    expect(dailyWord("2026-11-03")).toBe(dailyWord("2026-11-03"));
+    const week = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08"].map((d) => dailyWord(d));
+    expect(new Set(week).size).toBeGreaterThan(3);
+  });
+
+  it("notices when the next trail is close, and only then", () => {
+    expect(dailyWord("2026-11-03", { label: "마추픽추", leftM: 1200 })).toBe("마추픽추까지 1.2km! 거의 다 왔어요 🏔️");
+    expect(dailyWord("2026-11-03", { label: "마추픽추", leftM: 5000 })).not.toContain("마추픽추");
   });
 });

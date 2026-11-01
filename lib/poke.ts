@@ -12,24 +12,46 @@ import type { Day } from "@/lib/today/day";
 export const POKE_ENABLED = true;
 export const POKES_PER_DAY = 3;
 
-/** How many 콕 I have left today. */
-export async function pokesLeft(client: PoolClient, meId: string, day: Day): Promise<number> {
+/** 💗 보고싶다 (migration 012): a 콕's softer sibling, once a day. */
+export const MISS_ENABLED = true;
+export const MISSES_PER_DAY = 1;
+
+export type PokeKind = "poke" | "miss";
+const LIMIT: Record<PokeKind, number> = { poke: POKES_PER_DAY, miss: MISSES_PER_DAY };
+
+/** How many of a kind I have left today. */
+export async function pokesLeft(
+  client: PoolClient,
+  meId: string,
+  day: Day,
+  kind: PokeKind = "poke",
+): Promise<number> {
   const { rows } = await client.query<{ n: number }>(
-    "SELECT count(*)::int AS n FROM poke WHERE from_person = $1 AND day = $2",
-    [meId, day],
+    "SELECT count(*)::int AS n FROM poke WHERE from_person = $1 AND day = $2 AND kind = $3",
+    [meId, day, kind],
   );
-  return Math.max(0, POKES_PER_DAY - rows[0].n);
+  return Math.max(0, LIMIT[kind] - rows[0].n);
 }
 
-/** Send one. Returns how many are left, or null when today's three are used. */
-export async function sendPoke(meId: string, toId: string, day: Day): Promise<number | null> {
+/** Send one. Returns how many are left, or null when today's are used. */
+export async function sendPoke(
+  meId: string,
+  toId: string,
+  day: Day,
+  kind: PokeKind = "poke",
+): Promise<number | null> {
   try {
     return await asPerson(meId, async (client) => {
-      await client.query("INSERT INTO poke (from_person, to_person, day) VALUES ($1, $2, $3)", [meId, toId, day]);
-      return pokesLeft(client, meId, day);
+      await client.query("INSERT INTO poke (from_person, to_person, day, kind) VALUES ($1, $2, $3, $4)", [
+        meId,
+        toId,
+        day,
+        kind,
+      ]);
+      return pokesLeft(client, meId, day, kind);
     });
   } catch (error) {
-    if (error instanceof Error && /three pokes a day/.test(error.message)) return null;
+    if (error instanceof Error && /limit reached for today/.test(error.message)) return null;
     throw error;
   }
 }
