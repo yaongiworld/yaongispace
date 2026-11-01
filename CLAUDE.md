@@ -42,7 +42,9 @@ how we got here, kept for its reasons, and each superseded line says so.
 - **PR #1** (`feat/south-america`, the trip planner) stays a draft. The PO has decided the
   day-by-day planner is **not** going into this app; its cardio and distance logic was
   reused. If it is ever merged, its `008` must be renumbered after `009`.
-- **Next, approved**: a one-tap daily protein counter (🥚 +1 per serving, count only).
+- **Protein counter** (migration `010_protein.sql`): 🥚 on your Today card, one tap = +1
+  for today; − / + on a Moments day card fixes a mis-tap. A count only, 0–20, and not
+  News.
 
 ## Status: charted, then built
 

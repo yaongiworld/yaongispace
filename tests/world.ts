@@ -20,6 +20,7 @@ const TABLES = [
   "day_mood",
   "day_offwork",
   "day_memo",
+  "day_protein",
   "import_upload",
   "place_proposal",
   "rendition",
