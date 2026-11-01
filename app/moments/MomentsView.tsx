@@ -12,6 +12,7 @@ import { formatKg, formatKm } from "@/lib/workout/measures";
 import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Celebrate } from "../ui/Celebrate";
+import { useDayRollover } from "../ui/useDayRollover";
 import { countProtein, saveMemo } from "../today/actions";
 import { addAnniversary, removeAnniversary } from "./actions";
 
@@ -53,6 +54,7 @@ export function MomentsView({
   names: Record<Cat, string>;
   myCat: Cat;
 }) {
+  useDayRollover(today);
   const [open, setOpen] = useState<string | null>(null);
   const [cheer, setCheer] = useState<string | null>(null);
   const close = useCallback(() => setOpen(null), []);
@@ -226,6 +228,7 @@ export function MomentsView({
             events={eventsOn(open)}
             names={names}
             myCat={myCat}
+            future={open > today}
             onCheer={setCheer}
           />
         ) : null}
@@ -259,8 +262,11 @@ function DayCard({
   events,
   names,
   myCat,
+  future,
   onCheer,
 }: {
+  /** A day still to come: only anniversaries can be written for it. */
+  future: boolean;
   day: string;
   data: MomentDay | undefined;
   events: MomentEvent[];
@@ -278,7 +284,8 @@ function DayCard({
   const bumpProtein = (delta: 1 | -1) => {
     setProtein((n) => Math.max(0, Math.min(20, n + delta)));
     startTransition(async () => {
-      setProtein(await countProtein(delta, day));
+      const n = await countProtein(delta, day);
+      if (n !== null) setProtein(n);
     });
   };
 
@@ -321,6 +328,8 @@ function DayCard({
         })}
       </ul>
 
+      {!future ? (
+        <>
       {/* 🥚 — both counts; yours can be fixed here (a mis-tap on Today). */}
       <section aria-label="단백질" className="flex items-center gap-3 px-1">
         <span className="text-xs font-semibold text-clay-ink-soft">🥚 단백질</span>
@@ -356,6 +365,9 @@ function DayCard({
           </button>
         </span>
       </section>
+
+        </>
+      ) : null}
 
       {data?.workouts.length ? (
         <section aria-label="운동" className="flex flex-col gap-1.5">
@@ -444,13 +456,14 @@ function DayCard({
         </section>
       ) : null}
 
-      {/* My line for this day. */}
+      {/* My line for this day — not for a day that has not happened. */}
+      {!future ? (
       <form
         className="flex gap-2"
         onSubmit={(ev) => {
           ev.preventDefault();
           startTransition(async () => {
-            await saveMemo(memo, day);
+            if (!(await saveMemo(memo, day))) return onCheer("이 날은 아직 못 적어요");
             onCheer(memo.trim() ? "메모했어요 ✏️" : "메모를 지웠어요");
           });
         }}
@@ -485,6 +498,7 @@ function DayCard({
           저장
         </button>
       </form>
+      ) : null}
 
       {adding ? (
         <form

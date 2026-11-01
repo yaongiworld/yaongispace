@@ -10,6 +10,7 @@ import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
+import { useDayRollover } from "../ui/useDayRollover";
 import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, saveMemo, signOut, undoLeftWork } from "./actions";
 
 export interface TodayCat {
@@ -36,6 +37,7 @@ const ACCENT: Record<Cat, string> = {
 };
 
 export function TodayView({
+  day,
   dayLabel,
   cats,
   line,
@@ -45,6 +47,8 @@ export function TodayView({
   needsClaim = false,
 }: {
   needsClaim?: boolean;
+  /** The Seoul day this screen was rendered for. */
+  day: string;
   dayLabel: string;
   cats: TodayCat[];
   line: string;
@@ -53,6 +57,7 @@ export function TodayView({
   items: string[];
 }) {
   const router = useRouter();
+  useDayRollover(day);
   const [open, setOpen] = useState<Open>(null);
   const [cheer, setCheer] = useState<string | null>(null);
   const [hop, setHop] = useState(0);

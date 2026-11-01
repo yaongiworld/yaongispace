@@ -134,6 +134,8 @@ export default async function EraPage() {
         <p className="text-center text-xs text-clay-ink-soft">유산소를 Workout에 적으면 저절로 쌓여요 🐾</p>
       </section>
 
+      {ERAS.some((e) => !e.open) ? (
+        <>
       {/* The rest hold their place (brief §4 — how they open is for later). */}
       <ul className="flex flex-col gap-3" aria-label="다른 여행지">
         {ERAS.filter((e) => !e.open).map((e) => (
@@ -148,6 +150,8 @@ export default async function EraPage() {
           </li>
         ))}
       </ul>
+        </>
+      ) : null}
     </main>
   );
 }

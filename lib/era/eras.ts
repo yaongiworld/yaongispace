@@ -42,14 +42,14 @@ export const LAP_THRESHOLDS_M: readonly number[] = PASSPORT_TRAILS.map((_, i) =>
 );
 
 /**
- * Every era the Era tab lists. Only South America is open; the rest hold
- * their place (brief §4 Era — how the next one opens is for later).
+ * Every era the Era tab lists. South America only (PO, 2026-11-01): Norway
+ * is a trip already taken, and no other era is planned, so none is shown as
+ * "곧 열려요" — a locked card would promise something nobody means to build.
+ * A future era is one more entry here, `open: false` until it opens.
  */
-export const ERAS = [
+export const ERAS: readonly { id: string; label: string; emoji: string; open: boolean }[] = [
   { id: "south_america", label: "남미", emoji: "🌎", open: true },
-  { id: "norway", label: "노르웨이", emoji: "🇳🇴", open: false },
-  { id: "japan", label: "일본", emoji: "🗾", open: false },
-] as const;
+];
 
 /** The era new cardio walks toward. */
 export const CURRENT_ERA_ID = "south_america";

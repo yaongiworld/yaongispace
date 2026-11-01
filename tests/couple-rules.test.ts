@@ -20,6 +20,7 @@ import { gridRange, monthGrid, shiftMonth } from "../lib/moments/month";
 import { addDays, isDay, relativeDayLabel, today, weekStart } from "../lib/today/day";
 import { DEFAULT_LEAVE_MINUTE, LEAVE_MINUTES, clockLabel, isLeaveMinute } from "../lib/today/clock";
 import { MOODS } from "../lib/today/moods";
+import { ERAS } from "../lib/era/eras";
 import { hearthFor } from "../lib/mood";
 import { catLine } from "../lib/today/line";
 import type { NewsGroup } from "../lib/news";
@@ -323,5 +324,11 @@ describe("the Today cat's one line", () => {
 
   it("is the warm nothing on a quiet day", () => {
     expect(catLine({ groups: [], seenAt: null, quietPartner: null, now })).toBe("조용한 하루예요");
+  });
+});
+
+describe("Era", () => {
+  it("lists South America only — no locked era promised (PO, 2026-11-01)", () => {
+    expect(ERAS.map((e) => [e.id, e.open])).toEqual([["south_america", true]]);
   });
 });
