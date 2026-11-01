@@ -38,8 +38,11 @@ how we got here, kept for its reasons, and each superseded line says so.
   No push, no badges.
 - **Colour**: Soft Clay unchanged, plus one token, `--color-clay-sky`, only for "this is
   토위's". Still light only.
-- **Images**: every picture slot is a 🐱 placeholder with a `data-image-id`
-  (`cat-face-yangcho`, `cat-face-tawee`, `item-*`, `trail-*`…) for the image room to fill.
+- **Images**: every picture slot has a `data-image-id` (`cat-face-yangcho`,
+  `cat-face-tawee`, `item-*`, `trail-*`…). A slot listed in `IMAGE_SRC`
+  (`app/ui/ImageSlot.tsx`) shows its picture; the rest keep an emoji until the image
+  room sends one. Live so far: the two PO-approved cat faces (`public/cats/`, 256px,
+  re-cropped from the approved originals). Moods show as a badge until mood drawings exist.
 - **PR #1** (`feat/south-america`, the trip planner) stays a draft. The PO has decided the
   day-by-day planner is **not** going into this app; its cardio and distance logic was
   reused. If it is ever merged, its `008` must be renumbered after `009`.

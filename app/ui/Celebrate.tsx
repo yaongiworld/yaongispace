@@ -10,7 +10,8 @@ import { createPortal } from "react-dom";
  *
  * `big` is for the moments worth more than a save — a trail finished, a new
  * item for the cat, a day both of us moved: twice the burst, confetti among
- * the hearts, a hopping cat, and a little longer on screen.
+ * the hearts, a hopping 🎉, and a little longer on screen. (Not a 🐱: the cats
+ * are drawn now, and an emoji cat beside them would be a different cat.)
  */
 export function Celebrate({
   message,
@@ -67,7 +68,7 @@ export function Celebrate({
         >
           {big ? (
             <span aria-hidden className="cat-hop mr-1.5 inline-block text-2xl align-middle">
-              🐱
+              🎉
             </span>
           ) : null}
           {message}

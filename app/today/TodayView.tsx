@@ -6,7 +6,7 @@ import type { Cat } from "@/lib/couple";
 import { DEFAULT_LEAVE_MINUTE, LEAVE_MINUTES, clockLabel } from "@/lib/today/clock";
 import { MOODS, catFace, moodOf, type MoodId } from "@/lib/today/moods";
 import { ITEMS, imageIdOf } from "@/lib/workout/items";
-import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
+import { CAT_FACE_ID, IMAGE_SRC, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
@@ -67,6 +67,12 @@ export function TodayView({
   const [open, setOpen] = useState<Open>(null);
   const [cheer, setCheer] = useState<string | null>(null);
   const [bigCheer, setBigCheer] = useState(false);
+  /** Every cheer says whether it is the big kind, so a small one never
+   *  inherits the confetti of the one before it. */
+  const say = useCallback((message: string, big = false) => {
+    setBigCheer(big);
+    setCheer(message);
+  }, []);
 
   // A day both of us moved (or both pressed a face) gets one cheer, once —
   // remembered on this phone so it does not repeat every time Today opens.
@@ -80,11 +86,10 @@ export function TodayView({
     } catch {
       return;
     }
-    setBigCheer(true);
     // Its own words, not the bubble's: the bubble says what happened, the
     // cheer says well done.
-    setCheer(kind === "moved" ? "둘 다 해냈어요! 🎉" : "둘이 함께 오늘을 남겼어요 💞");
-  }, [day, together.moved, together.moods]);
+    say(kind === "moved" ? "둘 다 해냈어요!" : "둘이 함께 오늘을 남겼어요 💞", true);
+  }, [day, together.moved, together.moods, say]);
   const [hop, setHop] = useState(0);
   const [, startTransition] = useTransition();
 
@@ -104,7 +109,7 @@ export function TodayView({
   const pickMood = (mood: MoodId) => {
     setOpen(null);
     setHop((n) => n + 1);
-    setCheer(`오늘은 ${moodOf(mood)!.emoji} ${moodOf(mood)!.label}`);
+    say(`오늘은 ${moodOf(mood)!.emoji} ${moodOf(mood)!.label}`);
     startTransition(async () => {
       patchMine({ mood });
       await chooseMood(mood);
@@ -127,7 +132,7 @@ export function TodayView({
           aria-label="야옹이 — 아이템과 설정"
           className="press grid h-12 w-12 place-items-center rounded-full"
         >
-          <ImageSlot id="yaongi-button" size={44} cat={myCat} />
+          <ImageSlot id={CAT_FACE_ID[myCat]} size={44} cat={myCat} />
         </button>
       </header>
 
@@ -146,7 +151,7 @@ export function TodayView({
               c.isMe
                 ? () => {
                     const next = Math.min(20, mine.protein + 1);
-                    setCheer(`🥚 오늘 ${next}번`);
+                    say(`🥚 오늘 ${next}번`);
                     startTransition(async () => {
                       patchMine({ protein: next });
                       await countProtein(1);
@@ -207,7 +212,7 @@ export function TodayView({
           me={mine}
           onSave={(minute) => {
             setOpen(null);
-            setCheer(`🚉 ${clockLabel(minute)} 도착!`);
+            say(`🚉 ${clockLabel(minute)} 도착!`);
             startTransition(async () => {
               patchMine({ leaveMinute: minute });
               await chooseLeaveTime(minute);
@@ -216,7 +221,7 @@ export function TodayView({
           onLeft={() => {
             setOpen(null);
             setHop((n) => n + 1);
-            setCheer("수고했어요! 🏃");
+            say("수고했어요! 🏃");
             startTransition(async () => {
               patchMine({ leftAt: "지금" });
               await leftWork();
@@ -245,7 +250,7 @@ export function TodayView({
           initial={mine.memo ?? ""}
           onSave={(body) => {
             setOpen(null);
-            setCheer(body.trim() ? "메모했어요 ✏️" : "메모를 지웠어요");
+            say(body.trim() ? "메모했어요 ✏️" : "메모를 지웠어요");
             startTransition(async () => {
               patchMine({ memo: body.trim() || null });
               await saveMemo(body);
@@ -359,6 +364,18 @@ function CatCard({
           face
         )}
         <EggBadge count={c.protein} name={c.name} onClick={onProtein} />
+        {/* The drawn face has one expression, so today's mood rides beside
+            it as a small badge; when mood drawings arrive the face itself
+            will change and this can go. */}
+        {mood && IMAGE_SRC[CAT_FACE_ID[c.cat]] ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-2.5 -bottom-1.5 grid h-9 w-9 place-items-center rounded-full bg-white text-xl"
+            style={{ boxShadow: "var(--shadow-clay)" }}
+          >
+            {mood.emoji}
+          </span>
+        ) : null}
       </div>
 
       {/* The name may be cut; the "나" beside it never is. */}
