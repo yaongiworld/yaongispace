@@ -11,7 +11,7 @@ import { POKE_ENABLED, sendPoke } from "@/lib/poke";
 import { isLeaveMinute } from "@/lib/today/clock";
 import { isDay, today } from "@/lib/today/day";
 import { isMoodId } from "@/lib/today/moods";
-import { addProtein, markLeft, setLeaveMinute, setMemo, setMood, unmarkLeft } from "@/lib/today/store";
+import { addProtein, markLeft, moveMemo, setLeaveMinute, setMemo, setMood, unmarkLeft } from "@/lib/today/store";
 
 /**
  * Today's writes. Each one is about *today* in Seoul and about the signed-in
@@ -67,6 +67,16 @@ export async function saveMemo(body: string, day?: string): Promise<boolean> {
   await setMemo(await me(), target, String(body ?? ""));
   refresh();
   return true;
+}
+
+/** Move my line from one day to another (both today or earlier). */
+export async function moveMyMemo(from: string, to: string): Promise<"moved" | "taken" | "missing" | "bad"> {
+  const a = dayFor(from);
+  const b = dayFor(to);
+  if (!a || !b || a === b) return "bad";
+  const result = await moveMemo(await me(), a, b);
+  refresh();
+  return result;
 }
 
 /** 🥚 +1 for today, or −1 from a Moments day card. Never a future day. */

@@ -148,3 +148,26 @@ export async function addProtein(personId: string, day: Day, delta: 1 | -1): Pro
     return rows[0].servings;
   });
 }
+
+/**
+ * Move my one line to another day — a memo written on the wrong date.
+ * Refuses rather than overwrites when that day already has a line of mine:
+ * one of the two would be lost, and which one is the person's to choose.
+ */
+export async function moveMemo(
+  personId: string,
+  from: Day,
+  to: Day,
+): Promise<"moved" | "taken" | "missing"> {
+  return asPerson(personId, async (c) => {
+    const has = await c.query("SELECT 1 FROM day_memo WHERE person_id = $1 AND day = $2", [personId, from]);
+    if (!has.rowCount) return "missing";
+    const taken = await c.query("SELECT 1 FROM day_memo WHERE person_id = $1 AND day = $2", [personId, to]);
+    if (taken.rowCount) return "taken";
+    const { rowCount } = await c.query(
+      "UPDATE day_memo SET day = $3, updated_at = now() WHERE person_id = $1 AND day = $2",
+      [personId, from, to],
+    );
+    return rowCount ? "moved" : "missing";
+  });
+}

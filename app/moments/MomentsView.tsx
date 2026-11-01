@@ -13,7 +13,7 @@ import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Celebrate } from "../ui/Celebrate";
 import { useDayRollover } from "../ui/useDayRollover";
-import { countProtein, saveMemo } from "../today/actions";
+import { countProtein, moveMyMemo, saveMemo } from "../today/actions";
 import { addAnniversary, removeAnniversary } from "./actions";
 
 export interface MomentEvent {
@@ -229,7 +229,9 @@ export function MomentsView({
             names={names}
             myCat={myCat}
             future={open > today}
+            today={today}
             onCheer={setCheer}
+            onClose={close}
           />
         ) : null}
       </Sheet>
@@ -263,8 +265,13 @@ function DayCard({
   names,
   myCat,
   future,
+  today,
   onCheer,
+  onClose,
 }: {
+  today: string;
+  /** Close the card — after a memo moves away from this day. */
+  onClose: () => void;
   /** A day still to come: only anniversaries can be written for it. */
   future: boolean;
   day: string;
@@ -281,6 +288,9 @@ function DayCard({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [protein, setProtein] = useState(data?.protein[myCat] ?? 0);
+  const [moving, setMoving] = useState(false);
+  const [moveTo, setMoveTo] = useState(day);
+  const saved = data?.memo[myCat] ?? "";
   const bumpProtein = (delta: 1 | -1) => {
     setProtein((n) => Math.max(0, Math.min(20, n + delta)));
     startTransition(async () => {
@@ -495,9 +505,69 @@ function DayCard({
             borderRadius: "var(--radius-clay-pill)",
           }}
         >
-          저장
+          {saved && !memo.trim() ? "지우기" : saved ? "고치기" : "저장"}
         </button>
       </form>
+      ) : null}
+
+      {/* A line written on the wrong day moves, rather than being typed
+          again: pick the day, it goes there (never over another line). */}
+      {!future && saved ? (
+        moving ? (
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-clay-ink">
+              <span className="shrink-0">📅 옮길 날</span>
+              <input
+                type="date"
+                value={moveTo}
+                max={today}
+                onChange={(ev) => setMoveTo(ev.target.value)}
+                aria-label="메모를 옮길 날"
+                className="field min-h-11 min-w-0 flex-1 px-3 text-base text-clay-ink outline-none"
+                style={{ background: "var(--color-clay-card)", borderRadius: "var(--radius-clay-pill)", boxShadow: "inset 0 0 0 1.5px var(--color-clay-rose)" }}
+              />
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMoving(false)}
+                className="press min-h-11 flex-1 text-sm text-clay-ink-soft"
+                style={{ background: "var(--color-clay-card)", borderRadius: "var(--radius-clay-pill)", boxShadow: "var(--shadow-clay)" }}
+              >
+                그만두기
+              </button>
+              <button
+                type="button"
+                disabled={pending || !moveTo || moveTo === day || moveTo > today}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await moveMyMemo(day, moveTo);
+                    if (result === "moved") {
+                      onCheer(`📅 ${shortDayLabel(moveTo)}로 옮겼어요`);
+                      onClose();
+                    } else if (result === "taken") {
+                      onCheer("그 날엔 이미 메모가 있어요");
+                    } else {
+                      onCheer("옮기지 못했어요");
+                    }
+                  })
+                }
+                className="press min-h-11 flex-1 text-sm font-semibold text-white disabled:opacity-40"
+                style={{ background: "var(--color-clay-berry)", borderRadius: "var(--radius-clay-pill)" }}
+              >
+                옮기기
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMoving(true)}
+            className="press min-h-11 self-center px-4 text-sm text-clay-ink-soft"
+          >
+            📅 메모를 다른 날로 옮기기
+          </button>
+        )
       ) : null}
 
       {adding ? (
