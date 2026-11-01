@@ -11,7 +11,8 @@ import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
 import { useDayRollover } from "../ui/useDayRollover";
-import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, missPartner, pokePartner, saveMemo, signOut, undoLeftWork, wearItem } from "./actions";
+import { chooseLeaveTime, chooseMood, choosePlan, claimCat, countProtein, leftWork, missPartner, pokePartner, saveMemo, signOut, tickStep, undoLeftWork, wearItem } from "./actions";
+import { STEPS, type Plan, type StepId } from "@/lib/today/steps";
 
 export interface TodayCat {
   cat: Cat;
@@ -29,9 +30,13 @@ export interface TodayCat {
   protein: number;
   /** The little item their cat is wearing (an emoji), or null. */
   item: string | null;
+  /** 오늘 운동각? — 🏋️ go / 😴 rest / not said. */
+  plan: Plan | null;
+  /** Ready steps ticked today. */
+  steps: StepId[];
 }
 
-type Open = null | "mood" | "clock" | "record" | "memo" | "yaongi";
+type Open = null | "mood" | "clock" | "record" | "memo" | "yaongi" | "ready";
 
 const ACCENT: Record<Cat, string> = {
   yangcho: "var(--color-clay-berry)",
@@ -218,6 +223,7 @@ export function TodayView({
             pokeHint={!c.isMe && pokes === 3}
             onMood={c.isMe ? () => setOpen("mood") : undefined}
             onClock={c.isMe ? () => setOpen("clock") : undefined}
+            onReady={c.isMe ? () => setOpen("ready") : undefined}
             onProtein={
               c.isMe
                 ? () => {
@@ -332,6 +338,35 @@ export function TodayView({
             startTransition(async () => {
               patchMine({ memo: body.trim() || null });
               await saveMemo(body);
+            });
+          }}
+        />
+      </Sheet>
+
+      <Sheet open={open === "ready"} onClose={close} title="오늘 운동각?">
+        <ReadySheet
+          plan={mine.plan}
+          steps={mine.steps}
+          onPlan={(p) => {
+            startTransition(async () => {
+              patchMine({ plan: p });
+              await choosePlan(p);
+            });
+          }}
+          onStep={(step) => {
+            const done = !mine.steps.includes(step);
+            const next = done ? [...mine.steps, step] : mine.steps.filter((x) => x !== step);
+            const all = next.length === STEPS.length;
+            if (done && all) {
+              setHop((n) => n + 1);
+              say("준비 완료! 💪 다녀와요", true);
+            } else if (done && step === "fuel") {
+              say("🥚 단백질 +1");
+            }
+            startTransition(async () => {
+              patchMine({ steps: next, protein: step === "fuel" ? Math.max(0, mine.protein + (done ? 1 : -1)) : mine.protein });
+              const r = await tickStep(step, done);
+              if (r.item) say(`새 소품 ${r.item.emoji} ${r.item.label}!`, true);
             });
           }}
         />
@@ -474,11 +509,14 @@ function CatCard({
   onProtein,
   onPoke,
   onMiss,
+  onReady,
   wiggle = false,
   pokeHint = false,
 }: {
   /** The other one's cat, held: 💗 보고싶다. */
   onMiss?: () => void;
+  /** My 오늘 운동각? sheet. */
+  onReady?: () => void;
   /** Say once a day, quietly, that the other one's cat can be poked. */
   pokeHint?: boolean;
   c: TodayCat;
@@ -586,6 +624,7 @@ function CatCard({
       )}
 
       <OffworkChip c={c} onClick={onClock} />
+      <ReadyChip c={c} onClick={onReady} />
       {onPoke && pokeHint ? (
         <span className="-mb-1 text-[11px] text-clay-ink-soft">👉 톡 콕 · 꾹 💗 보고싶다</span>
       ) : null}
@@ -685,6 +724,126 @@ function OffworkChip({ c, onClick }: { c: TodayCat; onClick?: () => void }) {
       {text}
       {tag}
     </button>
+  );
+}
+
+/**
+ * 오늘 운동각? on the card — one small chip, so the card stays three things
+ * and a line. Mine opens the sheet; the other one's only shows where they are.
+ */
+function ReadyChip({ c, onClick }: { c: TodayCat; onClick?: () => void }) {
+  const text =
+    c.plan === "go"
+      ? c.steps.length === STEPS.length
+        ? "🏋️ 준비 완료!"
+        : `🏋️ 운동각 ${c.steps.length}/${STEPS.length}`
+      : c.plan === "rest"
+        ? "😴 쉬는 날"
+        : onClick
+          ? "🏋️ 오늘 운동각?"
+          : null;
+  if (!text) return null;
+  const style: React.CSSProperties = {
+    borderRadius: "var(--radius-clay-pill)",
+    background: c.plan === "go" && c.steps.length === STEPS.length ? "color-mix(in srgb, var(--color-clay-berry) 14%, white)" : "transparent",
+  };
+  if (!onClick) {
+    return (
+      <span className="px-2 py-1 text-xs whitespace-nowrap text-clay-ink" style={{ ...style, fontFamily: "var(--font-display)" }}>
+        {text}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="press min-h-11 px-3 text-sm whitespace-nowrap"
+      style={{ ...style, color: c.plan ? "var(--color-clay-ink)" : "var(--color-clay-ink-soft)", fontFamily: "var(--font-display)" }}
+    >
+      {text}
+    </button>
+  );
+}
+
+/** The sheet: 🏋️ / 😴, then the four ready steps, each one tap. */
+function ReadySheet({
+  plan,
+  steps,
+  onPlan,
+  onStep,
+}: {
+  plan: Plan | null;
+  steps: StepId[];
+  onPlan: (p: Plan | null) => void;
+  onStep: (s: StepId) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 pb-2">
+      <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="오늘 운동각?">
+        {(
+          [
+            ["go", "🏋️", "운동각"],
+            ["rest", "😴", "쉬는 날"],
+          ] as const
+        ).map(([id, emoji, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={plan === id}
+            onClick={() => onPlan(plan === id ? null : id)}
+            className="press flex min-h-16 flex-col items-center justify-center gap-0.5 text-sm font-semibold text-clay-ink"
+            style={{
+              borderRadius: "var(--radius-clay)",
+              background: plan === id ? "var(--color-clay-blush)" : "var(--color-clay-card)",
+              boxShadow: plan === id ? "inset 0 0 0 2px var(--color-clay-rose), var(--shadow-clay)" : "var(--shadow-clay)",
+            }}
+          >
+            <span className="text-2xl" aria-hidden>
+              {emoji}
+            </span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {plan === "go" ? (
+        <ul className="flex flex-col gap-2" aria-label="준비">
+          {STEPS.map((s) => {
+            const done = steps.includes(s.id);
+            return (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={done}
+                  onClick={() => onStep(s.id)}
+                  className="press flex min-h-14 w-full items-center gap-3 px-4 text-left text-base text-clay-ink"
+                  style={{
+                    borderRadius: "var(--radius-clay)",
+                    background: done ? "color-mix(in srgb, var(--color-clay-berry) 10%, white)" : "var(--color-clay-card)",
+                    boxShadow: done ? "inset 0 0 0 2px var(--color-clay-rose)" : "var(--shadow-clay)",
+                  }}
+                >
+                  <span className="text-2xl" aria-hidden>
+                    {s.emoji}
+                  </span>
+                  <span className="flex-1">{s.label}</span>
+                  <span className="text-xl" aria-hidden>
+                    {done ? "✅" : "⬜️"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : plan === "rest" ? (
+        <p className="py-2 text-center text-sm text-clay-ink-soft">쉬는 것도 운동이에요 🐾 푹 쉬어요</p>
+      ) : (
+        <p className="py-2 text-center text-sm text-clay-ink-soft">고르면 둘 다에게 보여요 🐾</p>
+      )}
+    </div>
   );
 }
 

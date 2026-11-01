@@ -22,6 +22,8 @@ const TABLES = [
   "day_memo",
   "day_protein",
   "poke",
+  "day_plan",
+  "day_step",
   "import_upload",
   "place_proposal",
   "rendition",

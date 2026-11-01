@@ -47,6 +47,12 @@ how we got here, kept for its reasons, and each superseded line says so.
   News only); one shared daily word under the cat's line (`lib/today/word.ts`); earned
   items are worn from the Yaongi sheet and shown on the cat for both (`person.worn_item`,
   set only through `wear_item()`).
+- **오늘 운동각?** (migration `013_ready_steps.sql`, PO 2026-11-02): the old prototype's
+  Baby Steps without the timetable. Each says 🏋️ 운동각 / 😴 쉬는 날; on a workout day,
+  four steps — 👕 운동복 챙기기 · 🥚 단백질·간식 (also +1 on the protein counter) · 🔄 환복
+  · 🚶 출발. Only 챙기기 and 출발 are rewarded (D-181), as progress toward the cat's
+  items (`rewardCount` = workouts + those ticks; unticking takes it back). 4/4 is a big
+  '준비 완료!' cheer. The other one sees 'N/4' or '준비 완료!' on the card; never News.
 - **Images**: every picture slot has a `data-image-id` (`cat-face-yangcho`,
   `cat-face-tawee`, `item-*`, `trail-*`…). A slot listed in `IMAGE_SRC`
   (`app/ui/ImageSlot.tsx`) shows its picture; the rest keep an emoji until the image

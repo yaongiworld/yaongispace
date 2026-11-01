@@ -24,8 +24,9 @@ export type Item = (typeof ITEMS)[number];
 
 export const imageIdOf = (item: Item) => `item-${item.id}`;
 
-export function unlockedItems(workoutCount: number): Item[] {
-  return ITEMS.filter((i) => workoutCount >= i.at);
+/** `count` is rewardCount: workouts plus ticked 챙기기 / 출발 (lib/today/ready.ts). */
+export function unlockedItems(count: number): Item[] {
+  return ITEMS.filter((i) => count >= i.at);
 }
 
 /** The item a save just opened, if the count crossed a step. */
