@@ -58,7 +58,7 @@ export function Celebrate({
         ))}
         <p
           role="status"
-          className={`toast-in px-5 py-3 text-center text-clay-ink ${big ? "text-lg" : "text-base"}`}
+          className={`toast-in px-5 py-3 text-center whitespace-pre-line text-clay-ink ${big ? "text-lg leading-snug" : "text-base"}`}
           style={{
             fontFamily: "var(--font-display)",
             background: "var(--color-clay-card)",
