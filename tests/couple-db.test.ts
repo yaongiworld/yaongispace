@@ -99,7 +99,20 @@ describe("the day tables", () => {
     expect((await db.query("SELECT body FROM day_memo")).rows).toEqual([]);
   });
 
-  test("reads both people's day, by cat", async () => {
+  test("a line written on the wrong day moves — but never over another line", async () => {
+    await todayStore.setMemo(towee, DAY, "엉뚱한 날에 쓴 메모");
+    expect(await todayStore.moveMemo(towee, DAY, "2026-10-30")).toBe("moved");
+    expect((await db.query("SELECT to_char(day, 'YYYY-MM-DD') AS day, body FROM day_memo")).rows).toEqual([
+      { day: "2026-10-30", body: "엉뚱한 날에 쓴 메모" },
+    ]);
+    await todayStore.setMemo(towee, DAY, "오늘 메모");
+    expect(await todayStore.moveMemo(towee, "2026-10-30", DAY)).toBe("taken");
+    expect(await todayStore.moveMemo(towee, "2026-10-29", DAY)).toBe("missing");
+    // The other one's line is not mine to move.
+    expect(await todayStore.moveMemo(yangcho, DAY, "2026-10-28")).toBe("missing");
+  });
+
+    test("reads both people's day, by cat", async () => {
     await todayStore.setMood(yangcho, DAY, "excited");
     await todayStore.setLeaveMinute(towee, DAY, 1080);
     const day = await asPersonApp(towee, async (c) =>
