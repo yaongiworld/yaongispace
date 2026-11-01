@@ -1,5 +1,7 @@
 /**
- * The leaving-work clock (brief §4 Today): starts at 17:30, turns in
+ * The 퇴근 clock. Since 2026-11-01 (PO) it is the time of **arriving at
+ * 신도림역**, not of leaving the office as the brief first said; the stored
+ * column keeps its old name, `day_offwork.leave_minute`. Starts at 17:30, turns in
  * 10-minute steps. Times are minutes after midnight.
  */
 

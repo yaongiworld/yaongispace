@@ -170,7 +170,7 @@ export function TodayView({
           me={mine}
           onSave={(minute) => {
             setOpen(null);
-            setCheer(`${clockLabel(minute)}에 나가요`);
+            setCheer(`🚉 ${clockLabel(minute)} 도착!`);
             startTransition(async () => {
               patchMine({ leaveMinute: minute });
               await chooseLeaveTime(minute);
@@ -352,38 +352,55 @@ function MoodBadge({
   );
 }
 
+/**
+ * 퇴근 시간 = when they will **arrive at 신도림역** (PO, 2026-11-01 — this
+ * replaces the brief's "leaving the office"). "회사에서 나왔어요" is a separate
+ * status line under it: it says where they are, it is not part of any sum.
+ */
 function OffworkChip({ c, onClick }: { c: TodayCat; onClick?: () => void }) {
-  const text = c.leftAt
-    ? `🏃 ${c.leftAt === "지금" ? "방금" : c.leftAt} 나옴`
-    : c.leaveMinute !== null
-      ? `🏢 ${clockLabel(c.leaveMinute)}`
-      : onClick
-        ? "🏢 퇴근 시간"
-        : "🏢 --:--";
+  const text =
+    c.leaveMinute !== null ? `🚉 ${clockLabel(c.leaveMinute)}` : onClick ? "🚉 도착 시간" : "🚉 --:--";
+  const left = c.leftAt ? `🏃 ${c.leftAt === "지금" ? "방금" : c.leftAt} 나옴` : null;
 
   const style: React.CSSProperties = {
     fontFamily: "var(--font-display)",
-    background: c.leftAt ? "color-mix(in srgb, var(--color-clay-apricot) 55%, white)" : "var(--color-clay-dawn)",
+    background: "var(--color-clay-dawn)",
     borderRadius: "var(--radius-clay-pill)",
   };
 
-  if (!onClick) {
-    return (
-      <span className="flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums" style={style}>
-        {text}
-      </span>
-    );
-  }
-  return (
+  const chip = !onClick ? (
+    <span
+      className="flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums"
+      style={style}
+      aria-label={`${c.name} 신도림역 도착 ${c.leaveMinute !== null ? clockLabel(c.leaveMinute) : "아직 몰라요"}`}
+    >
+      {text}
+    </span>
+  ) : (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`퇴근 시간: ${text.replace(/^\S+ /, "")}. 바꾸기`}
+      aria-label={`퇴근 시간: 신도림역 ${c.leaveMinute !== null ? clockLabel(c.leaveMinute) + " 도착" : "도착 시간 정하기"}${left ? ", 회사에서 나옴" : ""}. 바꾸기`}
       className="press flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums"
       style={{ ...style, boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
     >
       {text}
     </button>
+  );
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {chip}
+      {left ? (
+        <span
+          aria-label={`${c.leftAt === "지금" ? "방금" : c.leftAt} 회사에서 나옴`}
+          className="px-2 py-0.5 text-xs whitespace-nowrap text-clay-ink tabular-nums"
+          style={{ borderRadius: 99, background: "color-mix(in srgb, var(--color-clay-apricot) 55%, white)" }}
+        >
+          {left}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -463,7 +480,7 @@ function ClockPicker({
 
   return (
     <div className="flex flex-col items-center gap-5 pb-2">
-      <p className="text-sm text-clay-ink-soft">회사에서 나오는 시간</p>
+      <p className="text-sm text-clay-ink-soft">🚉 신도림역에 도착하는 시간</p>
       <div className="flex items-center gap-2">
         <Wheel
           label="시"
@@ -489,7 +506,7 @@ function ClockPicker({
         className="press min-h-12 w-full py-3 text-base font-semibold text-white"
         style={{ background: "var(--color-clay-berry)", borderRadius: "var(--radius-clay-pill)", boxShadow: "var(--shadow-clay-lift)" }}
       >
-        {clockLabel(minute)}로 저장
+        {clockLabel(minute)} 도착으로 저장
       </button>
       {me.leftAt ? (
         <button type="button" onClick={onUndo} className="press min-h-11 px-4 text-sm text-clay-ink-soft underline underline-offset-4">
