@@ -119,7 +119,8 @@ export function WorkoutView({
     if (saved.item) parts.push(`새 소품 ${saved.item.emoji}`);
     // A trail finished or a new item for the cat is the big kind of moment.
     setBigCheer(Boolean(saved.trails?.length || saved.item));
-    setCheer(parts.join(" · "));
+    // One line per thing earned, so "새 소품 🌼" never breaks across lines.
+    setCheer(parts.join("\n"));
   };
 
   return (
