@@ -270,6 +270,7 @@ describe("the cat's line for the new News kinds (충돌 6)", () => {
     expect(hearthFor([group("offwork", "18:30")]).caption).toBe("토위는 18:30에 신도림역 도착이래요");
     expect(hearthFor([group("offwork", "left")]).caption).toBe("토위가 회사에서 나왔어요");
     expect(hearthFor([group("workout_for", "crunch")]).caption).toBe("토위가 기록해줬어요 💌");
+    expect(hearthFor([group("poke", null)]).caption).toBe("토위가 콕 찔렀어요 👉");
   });
 });
 

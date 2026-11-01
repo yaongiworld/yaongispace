@@ -4,6 +4,7 @@ import { asPerson } from "@/lib/as-person";
 import { loadCouple, type Cat } from "@/lib/couple";
 import { newsFor, newsSeenAt, seeNews } from "@/lib/news";
 import { catLine } from "@/lib/today/line";
+import { POKE_ENABLED, pokesLeft } from "@/lib/poke";
 import { shortDayLabel, today } from "@/lib/today/day";
 import { seoulClock } from "@/lib/today/clock";
 import { dayFor } from "@/lib/today/store";
@@ -35,15 +36,16 @@ export default async function HomePage() {
   if (!personId) redirect("/sign-in");
 
   const day = today();
-  const { couple, days, items, moved } = await asPerson(personId, async (client) => {
+  const { couple, days, items, pokes, moved } = await asPerson(personId, async (client) => {
     const couple = await loadCouple(client, personId);
     const days = await dayFor(client, couple, day);
     const items = unlockedItems(await workoutCount(client, personId));
+    const pokes = POKE_ENABLED && couple.partner ? await pokesLeft(client, personId, day) : 0;
     const { rows: moved } = await client.query<{ person_id: string }>(
       "SELECT DISTINCT person_id FROM workout WHERE day = $1",
       [day],
     );
-    return { couple, days, items, moved: moved.map((r) => r.person_id) };
+    return { couple, days, items, pokes, moved: moved.map((r) => r.person_id) };
   });
 
   const groups = await newsFor(personId);
@@ -87,6 +89,7 @@ export default async function HomePage() {
       speaker={couple.partner ? { cat: couple.partner.cat, mood: days[couple.partner.cat].mood } : null}
       myCat={couple.me.cat}
       needsClaim={!couple.claimed}
+      pokesLeft={POKE_ENABLED && couple.partner ? pokes : null}
       myName={couple.me.name}
       items={items.map((i) => i.id)}
     />

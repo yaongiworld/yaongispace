@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { asPerson } from "@/lib/as-person";
 import { currentPersonId } from "@/lib/auth/current-person";
 import { SESSION_COOKIE } from "@/lib/auth/session";
+import { loadCouple } from "@/lib/couple";
+import { POKE_ENABLED, sendPoke } from "@/lib/poke";
 import { isLeaveMinute } from "@/lib/today/clock";
 import { isDay, today } from "@/lib/today/day";
 import { isMoodId } from "@/lib/today/moods";
@@ -74,6 +76,17 @@ export async function countProtein(delta: number, day?: string): Promise<number 
   const n = await addProtein(await me(), target, delta);
   refresh();
   return n;
+}
+
+/** 콕: tap the other one's cat. Returns how many are left today, or null at three. */
+export async function pokePartner(): Promise<number | null> {
+  const meId = await me();
+  if (!POKE_ENABLED) return null;
+  const partnerId = await asPerson(meId, async (c) => (await loadCouple(c, meId)).partner?.id ?? null);
+  if (!partnerId) return null;
+  const left = await sendPoke(meId, partnerId, today());
+  revalidatePath("/");
+  return left;
 }
 
 /** The one-time welcome: "나는 양초 / 토위예요". See claim_cat in 009. */
