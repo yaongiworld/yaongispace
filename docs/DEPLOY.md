@@ -28,6 +28,12 @@ Korean region: Singapore is ~80ms away and a page render makes several
 sequential round-trips, so the difference is felt on every page rather than
 once.
 
+**Run the app next to it.** Vercel runs functions in Washington DC (`iad1`)
+unless told otherwise, which undoes the point of a Seoul database: every one
+of a page's sequential queries then crosses the Pacific twice. `vercel.json`
+pins the functions to Seoul (`"regions": ["icn1"]`). If the database ever
+moves, move that line with it — the two must be in the same place.
+
 **The free tier is enough**, and is what this app is deployed on: 500MB, which
 is thousands of letters, photo metadata and Entries — the photo *bytes* live in
 R2, not here. Two things to know about it:
