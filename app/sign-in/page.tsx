@@ -77,7 +77,7 @@ export default async function SignInPage({
 
         <a
           href="/auth/start"
-          className="flex w-full items-center justify-center gap-3 bg-white px-6 py-4 text-base text-clay-ink transition-transform active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-2.5 bg-white px-4 py-4 text-base whitespace-nowrap text-clay-ink transition-transform active:scale-[0.98]"
           style={{
             borderRadius: "var(--radius-clay-pill)",
             boxShadow: "var(--shadow-clay)",
