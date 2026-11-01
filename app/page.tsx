@@ -12,7 +12,7 @@ import { eraTotals } from "@/lib/era/store";
 import { shortDayLabel, today } from "@/lib/today/day";
 import { seoulClock } from "@/lib/today/clock";
 import { dayFor } from "@/lib/today/store";
-import { workoutCount } from "@/lib/workout/store";
+import { readyFor, rewardCount } from "@/lib/today/ready";
 import { ITEMS, unlockedItems } from "@/lib/workout/items";
 import { TodayView, type TodayCat } from "./today/TodayView";
 
@@ -40,10 +40,11 @@ export default async function HomePage() {
   if (!personId) redirect("/sign-in");
 
   const day = today();
-  const { couple, days, items, pokes, misses, worn, near, moved } = await asPerson(personId, async (client) => {
+  const { couple, days, items, pokes, misses, worn, near, moved, ready } = await asPerson(personId, async (client) => {
     const couple = await loadCouple(client, personId);
     const days = await dayFor(client, couple, day);
-    const items = unlockedItems(await workoutCount(client, personId));
+    const items = unlockedItems(await rewardCount(client, personId));
+    const ready = await readyFor(client, couple, day);
     const pokes = POKE_ENABLED && couple.partner ? await pokesLeft(client, personId, day) : 0;
     const misses = MISS_ENABLED && couple.partner ? await pokesLeft(client, personId, day, "miss") : 0;
     const { rows: worn } = await client.query<{ id: string; worn_item: string | null }>(
@@ -64,6 +65,7 @@ export default async function HomePage() {
       worn: Object.fromEntries(worn.map((r) => [r.id, r.worn_item])),
       near: { label: era.trail.label, leftM: era.trailLeftM },
       moved: moved.map((r) => r.person_id),
+      ready,
     };
   });
 
@@ -89,6 +91,8 @@ export default async function HomePage() {
       leaveMinute: d.leaveMinute,
       leftAt: d.leftAt ? seoulClock(d.leftAt) : null,
       memo: d.memo,
+      plan: ready[cat].plan,
+      steps: ready[cat].steps,
       item: who ? (ITEMS.find((i) => i.id === worn[who.id])?.emoji ?? null) : null,
       protein: d.protein,
     };

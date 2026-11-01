@@ -8,8 +8,8 @@ import { currentPersonId } from "@/lib/auth/current-person";
 import { SESSION_COOKIE } from "@/lib/auth/session";
 import { loadCouple } from "@/lib/couple";
 import { MISS_ENABLED, POKE_ENABLED, sendPoke } from "@/lib/poke";
-import { unlockedItems } from "@/lib/workout/items";
-import { workoutCount } from "@/lib/workout/store";
+import { newlyUnlocked, unlockedItems } from "@/lib/workout/items";
+import { isStepId, rewardCount, setPlan, setStep } from "@/lib/today/ready";
 import { isLeaveMinute } from "@/lib/today/clock";
 import { isDay, today } from "@/lib/today/day";
 import { isMoodId } from "@/lib/today/moods";
@@ -105,7 +105,7 @@ export async function missPartner(): Promise<number | null> {
 export async function wearItem(itemId: string | null): Promise<boolean> {
   const meId = await me();
   if (itemId !== null) {
-    const count = await asPerson(meId, (c) => workoutCount(c, meId));
+    const count = await asPerson(meId, (c) => rewardCount(c, meId));
     if (!unlockedItems(count).some((i) => i.id === itemId)) return false;
   }
   await asPerson(meId, (c) => c.query("SELECT wear_item($1)", [itemId ?? ""]));
@@ -122,6 +122,34 @@ export async function pokePartner(): Promise<number | null> {
   const left = await sendPoke(meId, partnerId, today());
   revalidatePath("/");
   return left;
+}
+
+/** 오늘 운동각? — 🏋️ / 😴, or null to clear. */
+export async function choosePlan(plan: string | null): Promise<void> {
+  if (plan !== null && plan !== "go" && plan !== "rest") return;
+  await setPlan(await me(), today(), plan);
+  refresh();
+}
+
+/**
+ * Tick or untick a ready step. 🥚 단백질·간식 also counts one serving on the
+ * protein counter (and gives it back when unticked), so it is never two
+ * taps. Returns an item the tick opened, for the cheer.
+ */
+export async function tickStep(
+  step: string,
+  done: boolean,
+): Promise<{ ok: boolean; item?: { emoji: string; label: string } }> {
+  if (!isStepId(step)) return { ok: false };
+  const meId = await me();
+  const day = today();
+  const before = await asPerson(meId, (c) => rewardCount(c, meId));
+  await setStep(meId, day, step, done);
+  if (step === "fuel") await addProtein(meId, day, done ? 1 : -1);
+  const after = await asPerson(meId, (c) => rewardCount(c, meId));
+  refresh();
+  const item = newlyUnlocked(before, after);
+  return { ok: true, item: item ? { emoji: item.emoji, label: item.label } : undefined };
 }
 
 /** The one-time welcome: "나는 양초 / 토위예요". See claim_cat in 009. */

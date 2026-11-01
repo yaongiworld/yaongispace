@@ -404,3 +404,38 @@ describe("💗 보고싶다 and wearing an item (012)", () => {
     );
   });
 });
+
+describe("오늘 운동각? and the ready steps (013)", () => {
+  let ready: typeof import("@/lib/today/ready");
+  beforeAll(async () => {
+    ready = await import("@/lib/today/ready");
+  });
+
+  test("only 챙기기 and 출발 count toward items, once a day each, and unticking takes it back", async () => {
+    const count = () => asPersonApp(towee, (c) => ready.rewardCount(c, towee));
+    expect(await count()).toBe(0);
+    await ready.setStep(towee, DAY, "pack", true);
+    await ready.setStep(towee, DAY, "pack", true); // a second tick is still one
+    await ready.setStep(towee, DAY, "fuel", true);
+    await ready.setStep(towee, DAY, "change", true);
+    expect(await count()).toBe(1);
+    await ready.setStep(towee, DAY, "depart", true);
+    await workouts.addWorkout(towee, { personId: towee, day: DAY, kind: "stretch", exerciseId: "stretch" });
+    expect(await count()).toBe(3);
+    await ready.setStep(towee, DAY, "depart", false);
+    expect(await count()).toBe(2);
+  });
+
+  test("both see both; only you set yours", async () => {
+    await ready.setPlan(yangcho, DAY, "go");
+    await ready.setStep(yangcho, DAY, "pack", true);
+    const seen = await asPersonApp(towee, async (c) => ready.readyFor(c, await couple.loadCouple(c, towee), DAY));
+    expect(seen.yangcho).toEqual({ plan: "go", steps: ["pack"] });
+    expect(seen.towee).toEqual({ plan: null, steps: [] });
+    await expect(
+      asPerson(db, towee, () => db.query("INSERT INTO day_step (person_id, day, step) VALUES ($1, $2, 'fuel')", [yangcho, DAY])),
+    ).rejects.toThrow(/row-level security/);
+    await ready.setPlan(yangcho, DAY, null);
+    expect((await db.query("SELECT count(*)::int AS n FROM day_plan")).rows[0].n).toBe(0);
+  });
+});

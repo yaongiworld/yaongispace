@@ -10,7 +10,8 @@ import { completionChange } from "@/lib/era/passport";
 import { eraTotals } from "@/lib/era/store";
 import { newlyUnlocked } from "@/lib/workout/items";
 import { parseWorkoutInput } from "@/lib/workout/input";
-import { addWorkout, deleteWorkout, updateWorkout, workoutCount } from "@/lib/workout/store";
+import { addWorkout, deleteWorkout, updateWorkout } from "@/lib/workout/store";
+import { rewardCount } from "@/lib/today/ready";
 import { today } from "@/lib/today/day";
 
 /**
@@ -45,7 +46,7 @@ async function snapshot(meId: string, ownerId: string) {
     const couple = await loadCouple(client, meId);
     if (![couple.yangcho?.id, couple.towee?.id].includes(ownerId)) return null;
     return {
-      count: await workoutCount(client, ownerId),
+      count: await rewardCount(client, ownerId),
       eraM: (await eraTotals(client, couple, CURRENT_ERA_ID)).totalM,
     };
   });
