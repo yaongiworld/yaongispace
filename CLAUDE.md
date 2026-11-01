@@ -7,11 +7,49 @@ Read the workspace root `../CLAUDE.md` first. Its working principles are binding
 especially *two users not a million*, *long-lived data*, *privacy by default*, and
 *don't over-engineer*.
 
-## Status: being charted, not built
+## Current state (2026-11-01) — read this before "Settled so far"
 
-This repo currently holds **no application code by design**. It is being planned with
-`/wayfinder` — the map lives at `.wayfinder/map.md` and its tickets in
-`.wayfinder/tickets/`.
+**The app is built and live** at yaongiworld.com. The site now carries the **couple app**
+(PR #2, migration `009_couple_app.sql`), specified by the PO's brief
+`yaongiworld app/NEW_ROOM_BRIEF.md` (outside this repo). Where the brief and the
+"Settled so far" list below disagree, **the brief wins** — the list is the history of
+how we got here, kept for its reasons, and each superseded line says so.
+
+- **Tabs**: five, English labels — **Today · Workout · Era · Moments · Letters**
+  (`app/sections.ts`). 사진 · 지도 · 달력 · 기억 are **hidden, not deleted**: code, data
+  and URLs stay; deleting `hidden: true` brings one back. The photo share target is off
+  with them (`SHARE_PHOTOS` in `app/manifest.ts`). Body text stays Korean, no i18n.
+- **Two cats**, not one: **양초** (coral, always left) and **토위** (sky, always right).
+  `person.cat` says which is whose; Today asks once ("나는 누구예요?") when it is unknown.
+  The UI always says 양초 / 토위, never the Google profile name.
+- **Today** replaces the hearth: both cats, today's mood face, leaving-work time (a
+  10-minute wheel from 17:30), one cat line (an unseen letter first, then today's News,
+  else 조용한 하루), and a small, quiet 오늘 기록하기. No nagging, no red dots.
+- **Workout** is the only place workouts are written: cardio = distance + time (wheels,
+  0.1km grid, integer metres), strength = weight only, core = reps only, stretch = done.
+  Either of us may log for the other (💌) and fix it.
+- **Era** is look-only: cardio adds up into South America's five passport trails
+  (36.5km a lap, `lib/era/`). Only South America; other eras are not planned.
+- **Moments** is a **month grid** (supersedes "agenda, not a grid"): two mood faces per
+  day, a dot for a workout, a heart for a memo or anniversary. Anniversaries are the
+  existing Events with their yearly repeat.
+- **News** gains three kinds — `mood`, `offwork`, `workout_for` — and is still a view.
+  No push, no badges.
+- **Colour**: Soft Clay unchanged, plus one token, `--color-clay-sky`, only for "this is
+  토위's". Still light only.
+- **Images**: every picture slot is a 🐱 placeholder with a `data-image-id`
+  (`cat-face-yangcho`, `cat-face-tawee`, `item-*`, `trail-*`…) for the image room to fill.
+- **PR #1** (`feat/south-america`, the trip planner) stays a draft. The PO has decided the
+  day-by-day planner is **not** going into this app; its cardio and distance logic was
+  reused. If it is ever merged, its `008` must be renumbered after `009`.
+- **Next, approved**: a one-tap daily protein counter (🥚 +1 per serving, count only).
+
+## Status: charted, then built
+
+This repo started as a plan made with `/wayfinder` — the map lives at
+`.wayfinder/map.md` and its tickets in `.wayfinder/tickets/`. The skeleton (tickets
+01–08) and then the couple app have since been built; the map is the record of *why*,
+the "Current state" above is the record of *what*.
 
 **Read [`CONTEXT.md`](./CONTEXT.md) before writing or discussing anything** — it is the
 shared vocabulary (Entry, Place, Visit, Journey, Letter, Note…) and using different
@@ -24,7 +62,8 @@ session; take the first unblocked, unclaimed one unless told otherwise.
 
 ## Settled so far
 
-- **Sections in scope**: home, letters, photos, world map, calendar, knowledge base +
+- *(Superseded 2026-11-01 — see Current state: five tabs.)*
+  **Sections in scope**: home, letters, photos, world map, calendar, knowledge base +
   chat agent.
 - **Out of scope this iteration**: SNS/relationships, finance, voice auth, the Google
   Photos API, Google Calendar sync.
@@ -36,7 +75,8 @@ session; take the first unblocked, unclaimed one unless told otherwise.
   brown ink. **Light only, no dark mode** (set `color-scheme: light`). 3D is confined to
   the home page for now.
 - **Assets**: Fluent Emoji 3D (MIT) / Noto (Apache-2.0) for icons; Phosphor or Iconoir for
-  UI chrome. **The hero mascot is being commissioned as an original** — emoji cats are
+  UI chrome. *(2026-11-01: two cats now, 양초 and 토위 — see Current state.)*
+  **The hero mascot is being commissioned as an original** — emoji cats are
   glyphs, not mascots. It has moods, swapping by app state. One cat, one place, reacting.
 - **Motion**: CSS 3D transforms, not WebGL — measured, and real 3D was invisible at 132px
   for ~600KB and a warmer battery.
@@ -79,7 +119,8 @@ session; take the first unblocked, unclaimed one unless told otherwise.
   Note, unified by a derived **Entry** index that makes recall possible. `occurred_at`
   (when it happened) is the primary time axis, not `created_at`. A wished-for
   destination is a Place with no Visit — there is no status flag.
-- **The calendar is an agenda, not a grid**, on a **sixth tab** (home · letters · photos ·
+- *(Superseded 2026-11-01 — Moments is a month grid; the agenda is hidden, its Events kept.)*
+  **The calendar is an agenda, not a grid**, on a **sixth tab** (home · letters · photos ·
   map · calendar · recall). No month view. Recurrence is a **yearly repeat flag**, not
   RRULE. A Journey **adopts** Events by date range; neither creates the other. **Reminders
   are just News** — there is no second notification system.
@@ -88,7 +129,8 @@ session; take the first unblocked, unclaimed one unless told otherwise.
   with no manual refresh, while iOS polls every 5 minutes — so with Yangcho on iPhone and
   Towee on Android the mirror would behave differently for each of us. News is the only
   channel. (This never affected the web app, which is a PWA on both platforms.)
-- **The app speaks Korean.** UI chrome is **Korean, hardcoded — no language switcher**,
+- *(Amended 2026-11-01 — the five tab labels are fixed English words; everything else is still Korean.)*
+  **The app speaks Korean.** UI chrome is **Korean, hardcoded — no language switcher**,
   no i18n scaffolding. Dates in Korean convention ("2026년 8월 22일"), relative for the
   recent past ("3일 전"), `Asia/Seoul`. We are **토위** and **양초** in the UI, not our
   legal names.
@@ -98,7 +140,8 @@ session; take the first unblocked, unclaimed one unless told otherwise.
   quoted source** — prose may be translated, evidence may not.
 - **Generated letter designs must never render text** — decorative only. Generated Hangul
   is garbled, and these are keepsakes.
-- **Home is a hearth, not a dashboard** — the hero cat is the content and News is a single
+- *(Superseded 2026-11-01 — Today: two cats and their moods; the spirit — no prompts, a warm nothing on a quiet day — is kept.)*
+  **Home is a hearth, not a dashboard** — the hero cat is the content and News is a single
   quiet line beneath it; the tab bar navigates. A quiet day shows a **warm nothing**
   ("조용한 하루"), never silence and **never a prompt**. **The home shortcut grid is
   dropped** — it duplicated the tab bar. The cat navigates nowhere (tap = squash-and-
