@@ -145,7 +145,7 @@ function captionFor(group: NewsGroup): string {
     case "offwork":
       return first.title === "left"
         ? `${who}가 회사에서 나왔어요`
-        : `${who}는 ${first.title}에 나올 거래요`;
+        : `${who}는 ${first.title}에 신도림역 도착이래요`;
     case "workout_for":
       return `${who}가 기록해줬어요 💌`;
     case "photo":

@@ -22,8 +22,9 @@ how we got here, kept for its reasons, and each superseded line says so.
 - **Two cats**, not one: **양초** (coral, always left) and **토위** (sky, always right).
   `person.cat` says which is whose; Today asks once ("나는 누구예요?") when it is unknown.
   The UI always says 양초 / 토위, never the Google profile name.
-- **Today** replaces the hearth: both cats, today's mood face, leaving-work time (a
-  10-minute wheel from 17:30), one cat line (an unseen letter first, then today's News,
+- **Today** replaces the hearth: both cats, today's mood face, 퇴근 time = **arrival at
+  신도림역** (PO 2026-11-01; a 10-minute wheel from 17:30, stored in
+  `day_offwork.leave_minute`) with "회사에서 나왔어요" as a separate status, one cat line (an unseen letter first, then today's News,
   else 조용한 하루), and a small, quiet 오늘 기록하기. No nagging, no red dots.
 - **Workout** is the only place workouts are written: cardio = distance + time (wheels,
   0.1km grid, integer metres), strength = weight only, core = reps only, stretch = done.
