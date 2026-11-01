@@ -49,17 +49,28 @@ export async function undoLeftWork(): Promise<void> {
   refresh();
 }
 
-export async function saveMemo(body: string, day?: string): Promise<void> {
-  // A day card in Moments may write any past day; never a future one.
-  const target = day && isDay(day) && day <= today() ? day : today();
+/**
+ * Which day a write is for. No day means today. A day that is given is used
+ * as it is, or the write is refused: a bad or future day must never quietly
+ * become today, or a Moments card for tomorrow would overwrite today's line.
+ */
+function dayFor(day: string | undefined): string | null {
+  if (day === undefined) return today();
+  return isDay(day) && day <= today() ? day : null;
+}
+
+export async function saveMemo(body: string, day?: string): Promise<boolean> {
+  const target = dayFor(day);
+  if (!target) return false;
   await setMemo(await me(), target, String(body ?? ""));
   refresh();
+  return true;
 }
 
 /** 🥚 +1 for today, or −1 from a Moments day card. Never a future day. */
-export async function countProtein(delta: number, day?: string): Promise<number> {
-  if (delta !== 1 && delta !== -1) return 0;
-  const target = day && isDay(day) && day <= today() ? day : today();
+export async function countProtein(delta: number, day?: string): Promise<number | null> {
+  const target = dayFor(day);
+  if ((delta !== 1 && delta !== -1) || !target) return null;
   const n = await addProtein(await me(), target, delta);
   refresh();
   return n;

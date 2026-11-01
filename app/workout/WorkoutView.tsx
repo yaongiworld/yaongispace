@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Cat } from "@/lib/couple";
 import { addDays, relativeDayLabel } from "@/lib/today/day";
@@ -36,6 +37,7 @@ import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
+import { useDayRollover } from "../ui/useDayRollover";
 import { fixWorkout, removeWorkout, saveWorkout, type Saved } from "./actions";
 
 export interface WorkoutPerson {
@@ -68,7 +70,10 @@ export function WorkoutView({
   people,
   workouts,
   openNew,
+  moreHref,
 }: {
+  /** Where "더 오래된 기록" goes, or null when there is nothing older. */
+  moreHref: string | null;
   today: string;
   weekStart: string;
   people: WorkoutPerson[];
@@ -76,6 +81,7 @@ export function WorkoutView({
   openNew: boolean;
 }) {
   const router = useRouter();
+  useDayRollover(today);
   const [filter, setFilter] = useState<Filter>("all");
   const [form, setForm] = useState<null | { mode: "new" } | { mode: "edit"; row: WorkoutRow }>(
     openNew ? { mode: "new" } : null,
@@ -190,6 +196,17 @@ export function WorkoutView({
           ))}
         </ol>
       )}
+
+      {moreHref ? (
+        <Link
+          href={moreHref}
+          scroll={false}
+          className="press mx-auto flex min-h-11 items-center px-5 text-sm text-clay-ink-soft"
+          style={{ background: "var(--color-clay-card-quiet)", borderRadius: "var(--radius-clay-pill)", boxShadow: "var(--shadow-clay)" }}
+        >
+          더 오래된 기록 보기
+        </Link>
+      ) : null}
 
       <Sheet open={form !== null} onClose={close} title={form?.mode === "edit" ? "기록 고치기" : "운동 기록"}>
         {form ? (
@@ -350,7 +367,9 @@ function WorkoutForm({
       case "cardio":
         return distanceM > 0 ? { ...base, kind, exerciseId: cardioId, distanceM, minutes } : null;
       case "strength":
-        return strengthId ? { ...base, kind, exerciseId: strengthId, weightDg: wheelsToDg(kg[0], kg[1]) } : null;
+        return strengthId && STRENGTH.find((s) => s.id === strengthId)?.category === category
+          ? { ...base, kind, exerciseId: strengthId, weightDg: wheelsToDg(kg[0], kg[1]) }
+          : null;
       case "core":
         return { ...base, kind, exerciseId: coreId, reps };
       case "stretch":
@@ -463,7 +482,11 @@ function WorkoutForm({
                 type="button"
                 role="radio"
                 aria-checked={category === c.id}
-                onClick={() => setCategory(c.id)}
+                onClick={() => {
+                  // A pick from another category would be saved unseen; clear it.
+                  setCategory(c.id);
+                  if (STRENGTH.find((s) => s.id === strengthId)?.category !== c.id) setStrengthId(null);
+                }}
                 className="press min-h-11 text-sm font-semibold"
                 style={chip(category === c.id)}
               >

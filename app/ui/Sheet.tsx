@@ -26,6 +26,7 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -35,16 +36,42 @@ export function Sheet({
     const previous = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (e.key !== "Tab" || !panel.current) return;
+      // Tab goes round the sheet, not out of it (the page behind is inert,
+      // so leaving would only reach the browser's own chrome).
+      const stops = [
+        ...panel.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), textarea, select, [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      if (stops.length === 0) return;
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const at = document.activeElement;
+      if (e.shiftKey && (at === first || at === panel.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && at === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Everything behind the sheet goes inert: Tab cannot wander out to the
+    // page or the tab bar, and a screen reader stays in the sheet.
+    const behind = [...document.body.children].filter(
+      (el): el is HTMLElement => el instanceof HTMLElement && el !== root.current && !el.inert,
+    );
+    behind.forEach((el) => (el.inert = true));
     // Move focus in — unless a child already took it (an `autoFocus` input
     // must keep it, or the phone keyboard never comes up).
     if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
+      behind.forEach((el) => (el.inert = false));
       // Hand focus back only if nobody else has taken it: when one sheet
       // closes *into* another (오늘 기록하기 → 한 줄 메모), the next sheet's
       // input already has focus, and taking it back would drop the keyboard.
@@ -56,7 +83,7 @@ export function Sheet({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-end justify-center">
+    <div ref={root} className="fixed inset-0 z-[60] flex items-end justify-center">
       <div
         className="sheet-backdrop absolute inset-0"
         style={{ background: "rgb(74 59 51 / 0.28)" }}

@@ -42,15 +42,19 @@ export function Wheel<T extends number>({
     if (el && Math.round(el.scrollTop / ROW) !== index) el.scrollTop = index * ROW;
   }, [index]);
 
+  // The value follows the row in the middle *as it moves*, not after the
+  // wheel settles: a 저장 tapped mid-glide saves exactly the number on screen.
   const onScroll = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    // A tapped row already set its value; the glide past the rows between
+    // must not report them on the way.
+    const i = Math.min(values.length - 1, Math.max(0, Math.round(el.scrollTop / ROW)));
+    if (!gliding.current && values[i] !== value) onChange(values[i]);
     if (settle.current) clearTimeout(settle.current);
     settle.current = setTimeout(() => {
       gliding.current = false;
-      const el = ref.current;
-      if (!el) return;
-      const i = Math.min(values.length - 1, Math.max(0, Math.round(el.scrollTop / ROW)));
-      if (values[i] !== value) onChange(values[i]);
-    }, 90);
+    }, 120);
   }, [values, value, onChange]);
 
   const go = (i: number) => {
@@ -58,6 +62,11 @@ export function Wheel<T extends number>({
     gliding.current = true;
     ref.current?.scrollTo({ top: clamped * ROW, behavior: "smooth" });
     onChange(values[clamped]);
+    // A glide to where the wheel already is fires no scroll event to end it.
+    if (settle.current) clearTimeout(settle.current);
+    settle.current = setTimeout(() => {
+      gliding.current = false;
+    }, 600);
   };
 
   return (

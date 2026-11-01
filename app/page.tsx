@@ -64,6 +64,7 @@ export default async function HomePage() {
 
   return (
     <TodayView
+      day={day}
       dayLabel={shortDayLabel(day)}
       cats={cats}
       line={catLine({
