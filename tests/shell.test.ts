@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import manifest from "../app/manifest";
 import { SECTIONS, VISIBLE_SECTIONS } from "../app/sections";
+import { IMAGE_SRC } from "../app/ui/ImageSlot";
 
 /**
  * Tests for the tab shell and the PWA manifest (ticket 04).
@@ -154,6 +155,20 @@ describe("the PWA manifest", () => {
     const action = /action: "([^"]+)"/.exec(manifestSource)?.[1] ?? "";
     expect(action).toBe("/photos/import");
     expect(existsSync(join(appDir, action.replace(/^\//, ""), "route.ts"))).toBe(true);
+  });
+});
+
+describe("the pictures in image slots", () => {
+  it("ships every picture a slot points at, square and sharp enough for the Today face", () => {
+    // A slot id in IMAGE_SRC with no file behind it would be a broken image
+    // on every screen with a cat on it.
+    expect(Object.keys(IMAGE_SRC)).toEqual(["cat-face-yangcho", "cat-face-tawee"]);
+    for (const [id, src] of Object.entries(IMAGE_SRC)) {
+      const file = join(publicDir, src.replace(/^\//, ""));
+      expect(existsSync(file), `${id}: ${src}`).toBe(true);
+      // 256px: the Today face is 84px, so 3x screens need ~252.
+      expect(pngSize(file), id).toEqual({ width: 256, height: 256 });
+    }
   });
 });
 
