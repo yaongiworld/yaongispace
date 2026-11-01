@@ -322,6 +322,21 @@ describe("the Today cat's one line", () => {
     expect(catLine({ groups, seenAt: null, quietPartner: null, now })).toBe("토위가 기록해줬어요 💌");
   });
 
+  it("cheers a day both of us moved, after an unseen letter", () => {
+    const both = { moods: true, moved: true };
+    expect(catLine({ groups: [], seenAt: null, quietPartner: null, together: both, now })).toBe("💪 오늘 둘 다 운동했어요!");
+    const letter = [g("letter", "2026-11-01T02:00:00Z")];
+    expect(catLine({ groups: letter, seenAt: null, quietPartner: null, together: both, now })).toBe("토위가 편지를 봉했어요");
+  });
+
+  it("says both pressed a face instead of half the story, but never hides real news", () => {
+    const moods = { moods: true, moved: false };
+    const mood = [g("mood", "2026-11-01T02:55:00Z", "happy")];
+    expect(catLine({ groups: mood, seenAt: null, quietPartner: null, together: moods, now })).toBe("💞 오늘 둘 다 기분을 남겼어요");
+    const left = [g("mood", "2026-11-01T02:55:00Z", "happy"), g("offwork", "2026-11-01T02:50:00Z", "left")];
+    expect(catLine({ groups: left, seenAt: null, quietPartner: null, together: moods, now })).toBe("토위가 회사에서 나왔어요");
+  });
+
   it("is the warm nothing on a quiet day", () => {
     expect(catLine({ groups: [], seenAt: null, quietPartner: null, now })).toBe("조용한 하루예요");
   });
@@ -330,5 +345,13 @@ describe("the Today cat's one line", () => {
 describe("Era", () => {
   it("lists South America only — no locked era promised (PO, 2026-11-01)", () => {
     expect(ERAS.map((e) => [e.id, e.open])).toEqual([["south_america", true]]);
+  });
+});
+
+describe("the cat wears today's mood", () => {
+  it("has a cat face for every mood, and 🐱 before one is pressed", async () => {
+    const { catFace } = await import("../lib/today/moods");
+    expect(MOODS.map((m) => catFace(m.id))).toEqual(["😸", "😻", "😽", "🙀", "😿", "😾"]);
+    expect(catFace(null)).toBe("🐱");
   });
 });

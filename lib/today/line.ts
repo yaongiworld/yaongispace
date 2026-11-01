@@ -10,18 +10,25 @@ import { today } from "./day";
  *      piece of news always worth its own sentence (CLAUDE.md), so it is
  *      never pushed out by a mood tapped five minutes later, nor by the day
  *      turning over before you opened the app;
- *   2. today's News, letters and imminent events first, then a workout
- *      written for you, then moods and clocks;
- *   3. if the other one has not pressed a face yet, a gentle guess for them
+ *   2. a day both of us moved — the one thing worth a cheer;
+ *   3. today's News, letters and imminent events first, then a workout
+ *      written for you, then clocks;
+ *   4. a day both of us pressed a face (it outranks the other one's mood
+ *      news, which would otherwise say the same thing by halves);
+ *   5. today's mood news;
+ *   6. if the other one has not pressed a face yet, a gentle guess for them
  *      — never a prompt, never a red dot;
- *   4. the warm nothing.
+ *   7. the warm nothing.
  */
 export function catLine({
   groups,
   seenAt,
   quietPartner,
+  together = { moods: false, moved: false },
   now = new Date(),
 }: {
+  /** Whether both of us pressed a face / logged a workout today. */
+  together?: { moods: boolean; moved: boolean };
   groups: NewsGroup[];
   /** When this person last looked at News, read *before* marking it seen. */
   seenAt: Date | null;
@@ -33,6 +40,7 @@ export function catLine({
     (g) => g.items[0].kind === "letter" && (!seenAt || g.arrivedAt > seenAt),
   );
   if (letter) return hearthFor([letter], now).caption;
+  if (together.moved) return "💪 오늘 둘 다 운동했어요!";
 
   const day = today(now);
   const fresh = groups
@@ -40,6 +48,9 @@ export function catLine({
     .map((g, i) => ({ g, i, rank: rank(g) }))
     .sort((a, b) => a.rank - b.rank || a.i - b.i)
     .map((x) => x.g);
+  const news = fresh.filter((g) => g.items[0].kind !== "mood");
+  if (news.length > 0) return hearthFor(news, now).caption;
+  if (together.moods) return "💞 오늘 둘 다 기분을 남겼어요";
   if (fresh.length > 0) return hearthFor(fresh, now).caption;
 
   if (quietPartner) return `${quietPartner}는 아직 바쁜가 봐요`;

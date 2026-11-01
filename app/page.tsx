@@ -35,16 +35,26 @@ export default async function HomePage() {
   if (!personId) redirect("/sign-in");
 
   const day = today();
-  const { couple, days, items } = await asPerson(personId, async (client) => {
+  const { couple, days, items, moved } = await asPerson(personId, async (client) => {
     const couple = await loadCouple(client, personId);
     const days = await dayFor(client, couple, day);
     const items = unlockedItems(await workoutCount(client, personId));
-    return { couple, days, items };
+    const { rows: moved } = await client.query<{ person_id: string }>(
+      "SELECT DISTINCT person_id FROM workout WHERE day = $1",
+      [day],
+    );
+    return { couple, days, items, moved: moved.map((r) => r.person_id) };
   });
 
   const groups = await newsFor(personId);
   const seenAt = await newsSeenAt(personId);
   await seeNews(personId);
+
+  // Both of us, today — the days worth a small cheer.
+  const together = {
+    moods: Boolean(couple.yangcho && couple.towee && days.yangcho.mood && days.towee.mood),
+    moved: Boolean(couple.yangcho && couple.towee && moved.includes(couple.yangcho.id) && moved.includes(couple.towee.id)),
+  };
 
   const cats: TodayCat[] = (["yangcho", "towee"] as Cat[]).map((cat) => {
     const who = couple[cat];
@@ -71,7 +81,10 @@ export default async function HomePage() {
         groups,
         seenAt,
         quietPartner: couple.partner && days[couple.partner.cat].mood === null ? couple.partner.name : null,
+        together,
       })}
+      together={together}
+      speaker={couple.partner ? { cat: couple.partner.cat, mood: days[couple.partner.cat].mood } : null}
       myCat={couple.me.cat}
       needsClaim={!couple.claimed}
       myName={couple.me.name}

@@ -7,25 +7,38 @@ import { createPortal } from "react-dom";
  * 하트 팡 — a burst of hearts and a short line after a save (brief §5).
  * Decorative only: the line is also announced politely for screen readers,
  * and under reduced motion only the line shows.
+ *
+ * `big` is for the moments worth more than a save — a trail finished, a new
+ * item for the cat, a day both of us moved: twice the burst, confetti among
+ * the hearts, a hopping cat, and a little longer on screen.
  */
-export function Celebrate({ message, onDone }: { message: string | null; onDone: () => void }) {
+export function Celebrate({
+  message,
+  onDone,
+  big = false,
+}: {
+  message: string | null;
+  onDone: () => void;
+  big?: boolean;
+}) {
   const [hearts, setHearts] = useState<{ id: number; dx: number; left: number; emoji: string; delay: number }[]>([]);
 
   useEffect(() => {
     if (!message) return;
-    const emojis = ["💗", "💕", "✨", "💖", "🩵"];
+    const emojis = big ? ["🎉", "💗", "✨", "🌸", "💖", "🩵", "⭐"] : ["💗", "💕", "✨", "💖", "🩵"];
+    const n = big ? 18 : 9;
     setHearts(
-      Array.from({ length: 9 }, (_, i) => ({
+      Array.from({ length: n }, (_, i) => ({
         id: Date.now() + i,
-        dx: Math.round((Math.random() - 0.5) * 160),
-        left: 40 + Math.random() * 20,
+        dx: Math.round((Math.random() - 0.5) * (big ? 280 : 160)),
+        left: 30 + Math.random() * 40,
         emoji: emojis[i % emojis.length],
-        delay: i * 45,
+        delay: i * (big ? 35 : 45),
       })),
     );
-    const t = setTimeout(onDone, 1900);
+    const t = setTimeout(onDone, big ? 2800 : 1900);
     return () => clearTimeout(t);
-  }, [message, onDone]);
+  }, [message, onDone, big]);
 
   if (!message || typeof document === "undefined") return null;
 
@@ -44,7 +57,7 @@ export function Celebrate({ message, onDone }: { message: string | null; onDone:
         ))}
         <p
           role="status"
-          className="toast-in px-5 py-3 text-center text-base text-clay-ink"
+          className={`toast-in px-5 py-3 text-center text-clay-ink ${big ? "text-lg" : "text-base"}`}
           style={{
             fontFamily: "var(--font-display)",
             background: "var(--color-clay-card)",
@@ -52,6 +65,11 @@ export function Celebrate({ message, onDone }: { message: string | null; onDone:
             boxShadow: "var(--shadow-clay-lift)",
           }}
         >
+          {big ? (
+            <span aria-hidden className="cat-hop mr-1.5 inline-block text-2xl align-middle">
+              🐱
+            </span>
+          ) : null}
           {message}
         </p>
       </div>

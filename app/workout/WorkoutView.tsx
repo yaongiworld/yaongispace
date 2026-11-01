@@ -87,6 +87,7 @@ export function WorkoutView({
     openNew ? { mode: "new" } : null,
   );
   const [cheer, setCheer] = useState<string | null>(null);
+  const [bigCheer, setBigCheer] = useState(false);
 
   // `?new=1` (from Today's record sheet) opens the form once, then leaves the
   // URL clean so a reload does not reopen it.
@@ -102,7 +103,10 @@ export function WorkoutView({
   const days = byDay(shown.map((w) => ({ ...w, createdAt: new Date(w.createdAt) })));
 
   const close = useCallback(() => setForm(null), []);
-  const done = useCallback(() => setCheer(null), []);
+  const done = useCallback(() => {
+    setCheer(null);
+    setBigCheer(false);
+  }, []);
 
   const onSaved = (saved: Saved, fallback: string) => {
     setForm(null);
@@ -113,6 +117,8 @@ export function WorkoutView({
     const parts = [fallback];
     if (saved.trails?.length) parts.push(`${saved.trails.join(", ")} 완주!`);
     if (saved.item) parts.push(`새 소품 ${saved.item.emoji}`);
+    // A trail finished or a new item for the cat is the big kind of moment.
+    setBigCheer(Boolean(saved.trails?.length || saved.item));
     setCheer(parts.join(" · "));
   };
 
@@ -224,7 +230,7 @@ export function WorkoutView({
         ) : null}
       </Sheet>
 
-      <Celebrate message={cheer} onDone={done} />
+      <Celebrate message={cheer} onDone={done} big={bigCheer} />
     </main>
   );
 }
@@ -317,6 +323,7 @@ function WorkoutForm({
   const d = owner.defaults;
 
   const [kind, setKind] = useState<WorkoutKind>(editing?.kind ?? d.kind);
+  const [pickingKind, setPickingKind] = useState(false);
   const [day, setDay] = useState(editing?.day ?? today);
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -436,7 +443,25 @@ function WorkoutForm({
         </div>
       </div>
 
-      {!editing ? (
+      {/* The kind folds to one chip — the one the form opened on, which is
+          usually right (last time's) — and opens to all four on a tap. One
+          row instead of a grid of four on every log. */}
+      {!editing && !pickingKind ? (
+        <button
+          type="button"
+          onClick={() => setPickingKind(true)}
+          aria-label={`운동 종류: ${KINDS.find((k) => k.id === kind)?.label}. 바꾸기`}
+          className="press flex min-h-11 items-center gap-2 self-start pr-3 pl-2 text-sm font-semibold"
+          style={chip(true)}
+        >
+          <span className="text-xl" aria-hidden>
+            {KINDS.find((k) => k.id === kind)?.emoji}
+          </span>
+          {KINDS.find((k) => k.id === kind)?.label}
+          <span className="text-xs font-normal text-clay-ink-soft">바꾸기 ▾</span>
+        </button>
+      ) : null}
+      {!editing && pickingKind ? (
         <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="운동 종류">
           {KINDS.map((k) => (
             <button
@@ -444,7 +469,10 @@ function WorkoutForm({
               type="button"
               role="radio"
               aria-checked={kind === k.id}
-              onClick={() => setKind(k.id)}
+              onClick={() => {
+                setKind(k.id);
+                setPickingKind(false);
+              }}
               className="press flex min-h-14 flex-col items-center justify-center px-1 text-[12px] font-semibold"
               style={{ ...chip(kind === k.id), borderRadius: "var(--radius-clay-sm)" }}
             >

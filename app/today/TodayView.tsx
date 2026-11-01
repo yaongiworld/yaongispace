@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useOptimistic, useState, useTransition } from "react";
+import { useCallback, useEffect, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Cat } from "@/lib/couple";
 import { DEFAULT_LEAVE_MINUTE, LEAVE_MINUTES, clockLabel } from "@/lib/today/clock";
-import { MOODS, moodOf, type MoodId } from "@/lib/today/moods";
+import { MOODS, catFace, moodOf, type MoodId } from "@/lib/today/moods";
 import { ITEMS, imageIdOf } from "@/lib/workout/items";
 import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
@@ -45,7 +45,13 @@ export function TodayView({
   myName,
   items,
   needsClaim = false,
+  together = { moods: false, moved: false },
+  speaker = null,
 }: {
+  /** Both of us pressed a face / moved today. */
+  together?: { moods: boolean; moved: boolean };
+  /** The other one's cat says the line, wearing today's face. */
+  speaker?: { cat: Cat; mood: MoodId | null } | null;
   needsClaim?: boolean;
   /** The Seoul day this screen was rendered for. */
   day: string;
@@ -60,6 +66,25 @@ export function TodayView({
   useDayRollover(day);
   const [open, setOpen] = useState<Open>(null);
   const [cheer, setCheer] = useState<string | null>(null);
+  const [bigCheer, setBigCheer] = useState(false);
+
+  // A day both of us moved (or both pressed a face) gets one cheer, once —
+  // remembered on this phone so it does not repeat every time Today opens.
+  useEffect(() => {
+    const kind = together.moved ? "moved" : together.moods ? "moods" : null;
+    if (!kind) return;
+    const key = `yaongi-together-${day}-${kind}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    setBigCheer(true);
+    // Its own words, not the bubble's: the bubble says what happened, the
+    // cheer says well done.
+    setCheer(kind === "moved" ? "둘 다 해냈어요! 🎉" : "둘이 함께 오늘을 남겼어요 💞");
+  }, [day, together.moved, together.moods]);
   const [hop, setHop] = useState(0);
   const [, startTransition] = useTransition();
 
@@ -71,7 +96,10 @@ export function TodayView({
   const shown = cats.map((c) => (c.isMe ? mine : c));
 
   const close = useCallback(() => setOpen(null), []);
-  const done = useCallback(() => setCheer(null), []);
+  const done = useCallback(() => {
+    setCheer(null);
+    setBigCheer(false);
+  }, []);
 
   const pickMood = (mood: MoodId) => {
     setOpen(null);
@@ -132,7 +160,11 @@ export function TodayView({
 
       {/* The cat's one line. */}
       <div className="bubble-in relative mt-6 flex items-start gap-3">
-        <ImageSlot id="cat-speaker" size={40} emoji="🐈" />
+        {speaker ? (
+          <ImageSlot id={CAT_FACE_ID[speaker.cat]} size={44} cat={speaker.cat} emoji={catFace(speaker.mood)} />
+        ) : (
+          <ImageSlot id="cat-speaker" size={44} emoji="🐈" />
+        )}
         <p
           className="relative min-w-0 flex-1 px-4 py-3 text-base break-words text-clay-ink"
           style={{
@@ -226,7 +258,7 @@ export function TodayView({
         <YaongiSheet myCat={myCat} myName={myName} unlocked={items} />
       </Sheet>
 
-      <Celebrate message={cheer} onDone={done} />
+      <Celebrate message={cheer} onDone={done} big={bigCheer} />
     </main>
   );
 }
@@ -271,6 +303,13 @@ function Welcome() {
   );
 }
 
+/**
+ * One of us, today — kept to three things so the card never gets busy
+ * (brief: 덜 조잡하게): the cat, wearing today's mood as its face; the name
+ * and the mood in words; and one 🚉 pill. The 🥚 counter rides on the cat as
+ * a small badge rather than a third row. Mine is tappable everywhere it
+ * matters: the face picks a mood, the egg counts, the pill sets the time.
+ */
 function CatCard({
   c,
   hop,
@@ -286,21 +325,40 @@ function CatCard({
 }) {
   const mood = moodOf(c.mood);
   const accent = ACCENT[c.cat];
+  const face = (
+    <ImageSlot
+      id={CAT_FACE_ID[c.cat]}
+      size={84}
+      cat={c.cat}
+      emoji={catFace(c.mood)}
+      label={`${c.name} 고양이${mood ? `, 오늘 ${mood.label}` : ""}`}
+    />
+  );
 
   return (
     <article
       aria-label={`${c.name}${c.isMe ? " (나)" : ""}`}
-      className="flex min-w-0 flex-col items-center gap-2 px-2 pt-4 pb-3"
+      className="flex min-w-0 flex-col items-center gap-1.5 px-2 pt-4 pb-3"
       style={{
         background: "var(--color-clay-card)",
         borderRadius: "var(--radius-clay-lg)",
         boxShadow: `var(--shadow-clay), inset 0 3px 0 color-mix(in srgb, ${accent} 45%, transparent)`,
       }}
     >
-      <div key={hop} className={hop ? "cat-hop relative" : "relative"}>
-        <ImageSlot id={CAT_FACE_ID[c.cat]} size={72} cat={c.cat} label={`${c.name} 고양이`} />
-        {/* The face of the day, pinned to the cat. Mine is a button. */}
-        <MoodBadge mood={mood?.emoji ?? null} name={c.name} onClick={onMood} accent={accent} />
+      <div key={hop} className={hop ? "cat-hop relative" : "relative"} data-mood={c.mood ?? "none"}>
+        {onMood ? (
+          <button
+            type="button"
+            onClick={onMood}
+            aria-label={mood ? `내 기분 ${mood.emoji} ${mood.label}, 바꾸기` : "내 기분 고르기"}
+            className="press block rounded-full"
+          >
+            {face}
+          </button>
+        ) : (
+          face
+        )}
+        <EggBadge count={c.protein} name={c.name} onClick={onProtein} />
       </div>
 
       {/* The name may be cut; the "나" beside it never is. */}
@@ -309,120 +367,108 @@ function CatCard({
         {c.isMe ? <span className="shrink-0 text-xs font-normal text-clay-ink-soft">나</span> : null}
       </span>
 
+      {/* Today's mood in words — or, on my card, the hint that the cat is
+          the button. Never a nag on the other one's card. */}
+      {mood ? (
+        <span className="text-sm text-clay-ink" style={{ fontFamily: "var(--font-display)" }}>
+          {mood.emoji} {mood.label}
+        </span>
+      ) : onMood ? (
+        <button
+          type="button"
+          onClick={onMood}
+          className="press min-h-11 px-2 text-sm"
+          style={{ color: accent, fontFamily: "var(--font-display)" }}
+        >
+          톡! 오늘 기분은?
+        </button>
+      ) : (
+        <span className="text-sm text-clay-ink-soft">…</span>
+      )}
+
       <OffworkChip c={c} onClick={onClock} />
-      <ProteinChip count={c.protein} name={c.name} onClick={onProtein} />
     </article>
   );
 }
 
-function MoodBadge({
-  mood,
-  name,
-  onClick,
-  accent,
-}: {
-  mood: string | null;
-  name: string;
-  onClick?: () => void;
-  accent: string;
-}) {
+/**
+ * 🥚 on the cat (PO, 2026-11-01): one tap each time you eat some protein.
+ * Just a count — a mis-tap is undone with − on the day's Moments card.
+ */
+function EggBadge({ count, name, onClick }: { count: number; name: string; onClick?: () => void }) {
   const style: React.CSSProperties = {
     position: "absolute",
-    right: -14,
-    bottom: -10,
+    left: -14,
+    bottom: -8,
     width: 44,
     height: 44,
     borderRadius: "50%",
     display: "grid",
     placeItems: "center",
-    fontSize: mood ? 26 : 18,
     background: "white",
-    boxShadow: mood
-      ? "var(--shadow-clay)"
-      : `inset 0 0 0 2px color-mix(in srgb, ${accent} 40%, transparent)`,
-    color: "var(--color-clay-ink-soft)",
+    boxShadow: count > 0 ? "var(--shadow-clay)" : "inset 0 0 0 1.5px var(--color-clay-apricot)",
+    fontSize: 20,
   };
-  const content = mood ?? (onClick ? "＋" : "…");
+  const n = (
+    <span
+      aria-hidden
+      className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center px-1 text-[11px] font-bold text-white tabular-nums"
+      style={{ borderRadius: 99, background: count > 0 ? "var(--color-clay-berry)" : "var(--color-clay-ink-soft)" }}
+    >
+      {count}
+    </span>
+  );
   if (!onClick) {
     return (
-      <span style={style} role="img" aria-label={mood ? `${name}의 오늘 기분 ${mood}` : `${name}는 아직`}>
-        {content}
+      <span style={style} role="img" aria-label={`${name} 단백질 ${count}번`}>
+        🥚{n}
       </span>
     );
   }
   return (
-    <button type="button" onClick={onClick} style={style} className="press" aria-label={mood ? `내 기분 ${mood} 바꾸기` : "내 기분 고르기"}>
-      {content}
+    <button
+      type="button"
+      onClick={onClick}
+      style={style}
+      className="press"
+      aria-label={`단백질 먹었어요 (오늘 ${count}번). 한 번 더`}
+    >
+      🥚{n}
     </button>
   );
 }
 
 /**
- * 퇴근 시간 = when they will **arrive at 신도림역** (PO, 2026-11-01 — this
- * replaces the brief's "leaving the office"). "회사에서 나왔어요" is a separate
- * status line under it: it says where they are, it is not part of any sum.
+ * 퇴근 시간 = when they will **arrive at 신도림역** (PO, 2026-11-01). "회사에서
+ * 나왔어요" is a status, not a sum: a small 🏃 tag on the pill, so the arrival
+ * time stays readable and the card stays one pill tall.
  */
 function OffworkChip({ c, onClick }: { c: TodayCat; onClick?: () => void }) {
-  const text =
-    c.leaveMinute !== null ? `🚉 ${clockLabel(c.leaveMinute)}` : onClick ? "🚉 도착 시간" : "🚉 --:--";
-  const left = c.leftAt ? `🏃 ${c.leftAt === "지금" ? "방금" : c.leftAt} 나옴` : null;
+  const time = c.leaveMinute !== null ? clockLabel(c.leaveMinute) : null;
+  const text = time ? `🚉 ${time}` : onClick ? "🚉 도착 시간" : "🚉 --:--";
+  const left = c.leftAt ? (c.leftAt === "지금" ? "방금" : c.leftAt) : null;
 
   const style: React.CSSProperties = {
     fontFamily: "var(--font-display)",
     background: "var(--color-clay-dawn)",
     borderRadius: "var(--radius-clay-pill)",
   };
-
-  const chip = !onClick ? (
+  const tag = left ? (
     <span
-      className="flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums"
-      style={style}
-      aria-label={`${c.name} 신도림역 도착 ${c.leaveMinute !== null ? clockLabel(c.leaveMinute) : "아직 몰라요"}`}
+      aria-hidden
+      className="absolute -top-2 -right-1 px-1.5 py-0.5 text-[10px] leading-none whitespace-nowrap text-clay-ink"
+      style={{ borderRadius: 99, background: "color-mix(in srgb, var(--color-clay-apricot) 70%, white)", boxShadow: "var(--shadow-clay)" }}
     >
-      {text}
+      🏃 {left}
     </span>
-  ) : (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`퇴근 시간: 신도림역 ${c.leaveMinute !== null ? clockLabel(c.leaveMinute) + " 도착" : "도착 시간 정하기"}${left ? ", 회사에서 나옴" : ""}. 바꾸기`}
-      className="press flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums"
-      style={{ ...style, boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
-    >
-      {text}
-    </button>
-  );
+  ) : null;
+  const spoken = `신도림역 ${time ? `${time} 도착` : "도착 시간 아직"}${left ? `, ${left} 회사에서 나옴` : ""}`;
 
-  return (
-    <div className="flex flex-col items-center gap-1">
-      {chip}
-      {left ? (
-        <span
-          aria-label={`${c.leftAt === "지금" ? "방금" : c.leftAt} 회사에서 나옴`}
-          className="px-2 py-0.5 text-xs whitespace-nowrap text-clay-ink tabular-nums"
-          style={{ borderRadius: 99, background: "color-mix(in srgb, var(--color-clay-apricot) 55%, white)" }}
-        >
-          {left}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * 🥚 — one tap each time you eat some protein (PO, 2026-11-01). Just a count:
- * no grams, no foods. A mis-tap is undone with − on the day's Moments card.
- */
-function ProteinChip({ count, name, onClick }: { count: number; name: string; onClick?: () => void }) {
-  const style: React.CSSProperties = {
-    fontFamily: "var(--font-display)",
-    background: count > 0 ? "color-mix(in srgb, var(--color-clay-apricot) 60%, white)" : "var(--color-clay-dawn)",
-    borderRadius: "var(--radius-clay-pill)",
-  };
   if (!onClick) {
     return (
-      <span className="flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums" style={style} aria-label={`${name} 단백질 ${count}번`}>
-        🥚 {count}
+      <span className="relative mt-1 flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums" style={style} aria-label={`${c.name} ${spoken}`}>
+        {text}
+        {tag}
       </span>
     );
   }
@@ -430,12 +476,12 @@ function ProteinChip({ count, name, onClick }: { count: number; name: string; on
     <button
       type="button"
       onClick={onClick}
-      aria-label={`단백질 먹었어요 (오늘 ${count}번). 한 번 더`}
-      className="press flex min-h-11 items-center gap-1 px-3 text-base text-clay-ink tabular-nums"
+      aria-label={`퇴근 시간: ${spoken}. 바꾸기`}
+      className="press relative mt-1 flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums"
       style={{ ...style, boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
     >
-      🥚 {count}
-      <span className="text-xs text-clay-ink-soft">＋</span>
+      {text}
+      {tag}
     </button>
   );
 }
