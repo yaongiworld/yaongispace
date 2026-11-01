@@ -373,3 +373,34 @@ describe("콕 찌르기 (011)", () => {
     expect(await newsAs(yangcho)).toEqual([]);
   });
 });
+
+describe("💗 보고싶다 and wearing an item (012)", () => {
+  let poke: typeof import("@/lib/poke");
+  beforeAll(async () => {
+    poke = await import("@/lib/poke");
+  });
+
+  test("once a day, its own count beside the three 콕", async () => {
+    expect(await poke.sendPoke(towee, yangcho, DAY, "miss")).toBe(0);
+    expect(await poke.sendPoke(towee, yangcho, DAY, "miss")).toBeNull();
+    expect(await poke.sendPoke(towee, yangcho, DAY, "poke")).toBe(2);
+  });
+
+  test("is News to the one missed, as 'miss'", async () => {
+    await poke.sendPoke(towee, yangcho, DAY, "miss");
+    expect(await newsAs(yangcho)).toEqual([{ kind: "miss", title: null, person_id: towee }]);
+    expect(await newsAs(towee)).toEqual([]);
+  });
+
+  test("wear_item dresses only your own cat", async () => {
+    await asPerson(db, yangcho, async () => {
+      await db.query("SELECT wear_item('ribbon')");
+      const { rows } = await db.query("SELECT cat, worn_item FROM person ORDER BY display_name");
+      // Inside the rolled-back transaction: 양초 wears it, 토위 does not.
+      expect(rows.map((r) => r.worn_item).sort()).toEqual(["ribbon", null].sort());
+    });
+    await expect(asPerson(db, yangcho, () => db.query("UPDATE person SET worn_item = 'cap' WHERE id = $1", [towee]))).rejects.toThrow(
+      /permission denied/,
+    );
+  });
+});

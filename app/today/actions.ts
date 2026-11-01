@@ -7,7 +7,9 @@ import { asPerson } from "@/lib/as-person";
 import { currentPersonId } from "@/lib/auth/current-person";
 import { SESSION_COOKIE } from "@/lib/auth/session";
 import { loadCouple } from "@/lib/couple";
-import { POKE_ENABLED, sendPoke } from "@/lib/poke";
+import { MISS_ENABLED, POKE_ENABLED, sendPoke } from "@/lib/poke";
+import { unlockedItems } from "@/lib/workout/items";
+import { workoutCount } from "@/lib/workout/store";
 import { isLeaveMinute } from "@/lib/today/clock";
 import { isDay, today } from "@/lib/today/day";
 import { isMoodId } from "@/lib/today/moods";
@@ -86,6 +88,29 @@ export async function countProtein(delta: number, day?: string): Promise<number 
   const n = await addProtein(await me(), target, delta);
   refresh();
   return n;
+}
+
+/** 💗 보고싶다: hold the other one's cat. Once a day; null when used. */
+export async function missPartner(): Promise<number | null> {
+  const meId = await me();
+  if (!MISS_ENABLED) return null;
+  const partnerId = await asPerson(meId, async (c) => (await loadCouple(c, meId)).partner?.id ?? null);
+  if (!partnerId) return null;
+  const left = await sendPoke(meId, partnerId, today(), "miss");
+  revalidatePath("/");
+  return left;
+}
+
+/** Put an earned item on my cat (or take it off with null). */
+export async function wearItem(itemId: string | null): Promise<boolean> {
+  const meId = await me();
+  if (itemId !== null) {
+    const count = await asPerson(meId, (c) => workoutCount(c, meId));
+    if (!unlockedItems(count).some((i) => i.id === itemId)) return false;
+  }
+  await asPerson(meId, (c) => c.query("SELECT wear_item($1)", [itemId ?? ""]));
+  revalidatePath("/");
+  return true;
 }
 
 /** 콕: tap the other one's cat. Returns how many are left today, or null at three. */

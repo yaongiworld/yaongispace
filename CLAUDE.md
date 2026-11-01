@@ -42,6 +42,11 @@ how we got here, kept for its reasons, and each superseded line says so.
   Today; their cat says "양초가 콕 찔렀어요 👉" when they next open the app. Three a
   day (enforced in the DB), never pushed. `POKE_ENABLED` in `lib/poke.ts` is the off
   switch if it ever feels like pressure.
+- **💗 보고싶다 · 오늘의 한마디 · 소품 입히기** (migration `012_miss_and_wear.sql`, PO
+  2026-11-02): hold the other one's cat for 💗 (once a day, a `poke` of kind `miss`,
+  News only); one shared daily word under the cat's line (`lib/today/word.ts`); earned
+  items are worn from the Yaongi sheet and shown on the cat for both (`person.worn_item`,
+  set only through `wear_item()`).
 - **Images**: every picture slot has a `data-image-id` (`cat-face-yangcho`,
   `cat-face-tawee`, `item-*`, `trail-*`…). A slot listed in `IMAGE_SRC`
   (`app/ui/ImageSlot.tsx`) shows its picture; the rest keep an emoji until the image

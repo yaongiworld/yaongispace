@@ -148,6 +148,8 @@ function captionFor(group: NewsGroup): string {
         : `${who}는 ${first.title}에 신도림역 도착이래요`;
     case "workout_for":
       return `${who}가 기록해줬어요 💌`;
+    case "miss":
+      return `${who}가 보고싶대요 💗`;
     case "poke":
       return count > 1 ? `${who}가 콕콕 ${count}번 찔렀어요 👉` : `${who}가 콕 찔렀어요 👉`;
     case "photo":

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useOptimistic, useState, useTransition } from "react";
+import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Cat } from "@/lib/couple";
 import { DEFAULT_LEAVE_MINUTE, LEAVE_MINUTES, clockLabel } from "@/lib/today/clock";
@@ -11,7 +11,7 @@ import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
 import { useDayRollover } from "../ui/useDayRollover";
-import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, pokePartner, saveMemo, signOut, undoLeftWork } from "./actions";
+import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, missPartner, pokePartner, saveMemo, signOut, undoLeftWork, wearItem } from "./actions";
 
 export interface TodayCat {
   cat: Cat;
@@ -27,6 +27,8 @@ export interface TodayCat {
   memo: string | null;
   /** Times they had protein today. */
   protein: number;
+  /** The little item their cat is wearing (an emoji), or null. */
+  item: string | null;
 }
 
 type Open = null | "mood" | "clock" | "record" | "memo" | "yaongi";
@@ -46,9 +48,21 @@ export function TodayView({
   items,
   needsClaim = false,
   pokesLeft = null,
+  missesLeft = null,
+  missedBy = null,
+  word = null,
+  worn = null,
   together = { moods: false, moved: false },
   speaker = null,
 }: {
+  /** 💗 left today (0 or 1), or null when it is off. */
+  missesLeft?: number | null;
+  /** The other one's name when they sent a 💗 today. */
+  missedBy?: string | null;
+  /** 오늘의 한마디. */
+  word?: string | null;
+  /** The item id my cat is wearing. */
+  worn?: string | null;
   /** 콕 left today, or null when 콕 is off or there is nobody to poke. */
   pokesLeft?: number | null;
   /** Both of us pressed a face / moved today. */
@@ -100,6 +114,36 @@ export function TodayView({
   const [hop, setHop] = useState(0);
   const [wiggle, setWiggle] = useState(0);
   const [pokes, setPokes] = useState(pokesLeft);
+  const [misses, setMisses] = useState(missesLeft);
+  const [wornNow, setWornNow] = useState<string | null>(worn);
+
+  // 💗 보고싶다: hold the other one's cat. Once a day.
+  const miss = (name: string) => {
+    if (misses === null) return;
+    if (misses <= 0) return say("보고싶다는 오늘 이미 보냈어요 💗");
+    // No wiggle here: the wiggle remounts the cat (its key changes), and a
+    // remount mid-press would forget the hold and let the release count as a
+    // 콕 as well. The big 💗 cheer is the moment.
+    setMisses(0);
+    say(`💗 ${name}에게 보고싶다고 했어요`, true);
+    startTransition(async () => {
+      const left = await missPartner();
+      if (left !== null) setMisses(left);
+    });
+  };
+
+  // Being missed is worth a big moment — once, on this phone, that day.
+  useEffect(() => {
+    if (!missedBy) return;
+    const key = `yaongi-missed-${day}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    say(`${missedBy}가 보고싶대요 💗`, true);
+  }, [day, missedBy, say]);
 
   // 콕: the other one's cat wiggles here, and says so on their Today next
   // time they open the app. Three a day; the fourth just says "내일 또".
@@ -170,6 +214,7 @@ export function TodayView({
             hop={c.isMe ? hop : wiggle}
             wiggle={!c.isMe}
             onPoke={!c.isMe && pokes !== null && c.present ? () => poke(c.name) : undefined}
+            onMiss={!c.isMe && misses !== null && c.present ? () => miss(c.name) : undefined}
             pokeHint={!c.isMe && pokes === 3}
             onMood={c.isMe ? () => setOpen("mood") : undefined}
             onClock={c.isMe ? () => setOpen("clock") : undefined}
@@ -208,6 +253,13 @@ export function TodayView({
           {line}
         </p>
       </div>
+
+      {/* 오늘의 한마디 — the same word for both of us, once a day. */}
+      {word ? (
+        <p className="mt-3 text-center text-sm text-clay-ink-soft" style={{ fontFamily: "var(--font-display)" }}>
+          {word}
+        </p>
+      ) : null}
 
       <div className="flex-1" />
 
@@ -286,7 +338,21 @@ export function TodayView({
       </Sheet>
 
       <Sheet open={open === "yaongi"} onClose={close} title="야옹이">
-        <YaongiSheet myCat={myCat} myName={myName} unlocked={items} />
+        <YaongiSheet
+          myCat={myCat}
+          myName={myName}
+          unlocked={items}
+          worn={wornNow}
+          onWear={(id) => {
+            const next = id === wornNow ? null : id;
+            setWornNow(next);
+            patchMine({ item: ITEMS.find((i) => i.id === next)?.emoji ?? null });
+            say(next ? `${ITEMS.find((i) => i.id === next)?.emoji} 착용!` : "소품을 벗었어요");
+            startTransition(async () => {
+              await wearItem(next);
+            });
+          }}
+        />
       </Sheet>
 
       <Celebrate key={cheerId} message={cheer} onDone={done} big={bigCheer} />
@@ -335,6 +401,65 @@ function Welcome() {
 }
 
 /**
+ * A tap is a 콕; a hold (half a second) is a 💗. Pointer events so it works
+ * the same under a finger and a mouse; the click after a hold is swallowed so
+ * a 💗 is never also a 콕. Keyboard: Enter pokes, Shift+Enter sends the 💗.
+ */
+function HoldButton({
+  onTap,
+  onHold,
+  label,
+  children,
+}: {
+  onTap: () => void;
+  onHold?: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
+  const stop = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="press block rounded-full"
+      onPointerDown={() => {
+        held.current = false;
+        if (!onHold) return;
+        stop();
+        timer.current = setTimeout(() => {
+          held.current = true;
+          onHold();
+        }, 500);
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.shiftKey && onHold) {
+          e.preventDefault();
+          onHold();
+        }
+      }}
+      onClick={() => {
+        if (held.current) {
+          held.current = false;
+          return;
+        }
+        onTap();
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
  * One of us, today — kept to three things so the card never gets busy
  * (brief: 덜 조잡하게): the cat, wearing today's mood as its face; the name
  * and the mood in words; and one 🚉 pill. The 🥚 counter rides on the cat as
@@ -348,9 +473,12 @@ function CatCard({
   onClock,
   onProtein,
   onPoke,
+  onMiss,
   wiggle = false,
   pokeHint = false,
 }: {
+  /** The other one's cat, held: 💗 보고싶다. */
+  onMiss?: () => void;
   /** Say once a day, quietly, that the other one's cat can be poked. */
   pokeHint?: boolean;
   c: TodayCat;
@@ -387,9 +515,13 @@ function CatCard({
     >
       <div key={hop} className={hop ? (wiggle ? "poke-wiggle relative" : "cat-hop relative") : "relative"} data-mood={c.mood ?? "none"}>
         {onPoke ? (
-          <button type="button" onClick={onPoke} aria-label={`${c.name} 콕 찌르기`} className="press block rounded-full">
+          <HoldButton
+            onTap={onPoke}
+            onHold={onMiss}
+            label={`${c.name} 콕 찌르기${onMiss ? ", 꾹 누르면 보고싶다" : ""}`}
+          >
             {face}
-          </button>
+          </HoldButton>
         ) : onMood ? (
           <button
             type="button"
@@ -403,6 +535,17 @@ function CatCard({
           face
         )}
         <EggBadge count={c.protein} name={c.name} onClick={onProtein} />
+        {/* The little item, worn at the top of the face. */}
+        {c.item ? (
+          <span
+            role="img"
+            aria-label={`${c.name} 고양이 소품 ${c.item}`}
+            className="pointer-events-none absolute -top-2 -right-1 grid h-9 w-9 place-items-center rounded-full bg-white text-xl"
+            style={{ boxShadow: "var(--shadow-clay)" }}
+          >
+            {c.item}
+          </span>
+        ) : null}
         {/* The drawn face has one expression, so today's mood rides beside
             it as a small badge; when mood drawings arrive the face itself
             will change and this can go. */}
@@ -444,7 +587,7 @@ function CatCard({
 
       <OffworkChip c={c} onClick={onClock} />
       {onPoke && pokeHint ? (
-        <span className="-mb-1 text-[11px] text-clay-ink-soft">👉 얼굴을 톡 하면 콕</span>
+        <span className="-mb-1 text-[11px] text-clay-ink-soft">👉 톡 콕 · 꾹 💗 보고싶다</span>
       ) : null}
     </article>
   );
@@ -695,26 +838,33 @@ function MemoForm({ initial, onSave }: { initial: string; onSave: (body: string)
   );
 }
 
-function YaongiSheet({ myCat, myName, unlocked }: { myCat: Cat; myName: string; unlocked: string[] }) {
+function YaongiSheet({
+  myCat,
+  myName,
+  unlocked,
+  worn,
+  onWear,
+}: {
+  myCat: Cat;
+  myName: string;
+  unlocked: string[];
+  /** The item my cat wears now. */
+  worn: string | null;
+  /** Put one on (or, tapping the worn one, take it off). */
+  onWear: (id: string) => void;
+}) {
   const have = new Set(unlocked);
   return (
     <div className="flex flex-col gap-6 pb-2">
       <section aria-label="내 고양이 소품" className="flex flex-col items-center gap-3">
         <ImageSlot id={CAT_FACE_ID[myCat]} size={88} cat={myCat} label={`${myName} 고양이`} />
-        <p className="text-sm text-clay-ink-soft">운동할 때마다 작은 소품이 생겨요</p>
+        <p className="text-sm text-clay-ink-soft">운동할 때마다 작은 소품이 생겨요 · 톡 하면 착용</p>
         <ul className="grid w-full grid-cols-4 gap-2">
           {ITEMS.map((item) => {
             const open = have.has(item.id);
-            return (
-              <li
-                key={item.id}
-                className="flex flex-col items-center gap-1 py-2"
-                style={{
-                  background: open ? "var(--color-clay-card)" : "transparent",
-                  borderRadius: "var(--radius-clay-sm)",
-                  boxShadow: open ? "var(--shadow-clay)" : "inset 0 0 0 1.5px var(--color-clay-apricot)",
-                }}
-              >
+            const on = worn === item.id;
+            const inner = (
+              <>
                 <ImageSlot
                   id={imageIdOf(item)}
                   size={40}
@@ -722,7 +872,37 @@ function YaongiSheet({ myCat, myName, unlocked }: { myCat: Cat; myName: string; 
                   label={open ? item.label : "아직 잠겨 있어요"}
                   className={open ? "" : "opacity-50"}
                 />
-                <span className="text-[11px] text-clay-ink-soft">{open ? item.label : "?"}</span>
+                <span className="text-[11px] text-clay-ink-soft">{open ? (on ? "착용 중" : item.label) : "?"}</span>
+              </>
+            );
+            const style: React.CSSProperties = {
+              background: open ? "var(--color-clay-card)" : "transparent",
+              borderRadius: "var(--radius-clay-sm)",
+              boxShadow: on
+                ? "inset 0 0 0 2px var(--color-clay-berry), var(--shadow-clay)"
+                : open
+                  ? "var(--shadow-clay)"
+                  : "inset 0 0 0 1.5px var(--color-clay-apricot)",
+            };
+            return (
+              <li key={item.id}>
+                {open ? (
+                  // An earned item is a button: tap to wear, tap again to take off.
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={`${item.label} ${on ? "벗기" : "착용하기"}`}
+                    onClick={() => onWear(item.id)}
+                    className="press flex w-full flex-col items-center gap-1 py-2"
+                    style={style}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center gap-1 py-2" style={style}>
+                    {inner}
+                  </div>
+                )}
               </li>
             );
           })}
