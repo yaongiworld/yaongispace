@@ -6,6 +6,12 @@ created: 2026-08-22
 
 # Yaongispace — chart the skeleton
 
+> **2026-11-01 — the map is history now.** The skeleton was built, and on top of it the
+> **couple app** (Today · Workout · Era · Moments · Letters, migration 009) is live. Several
+> decisions below were deliberately superseded by the PO's brief — five English tabs, two
+> cats, a month-grid Moments, Today in place of the hearth. **Read "Current state" in
+> `CLAUDE.md` first**; this map keeps the reasoning behind each original decision.
+
 ## Destination
 
 A locked decision set and spec for the Yaongispace app skeleton — enough that an

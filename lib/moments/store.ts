@@ -11,6 +11,8 @@ import type { MoodId } from "@/lib/today/moods";
 export interface MomentDay {
   mood: Partial<Record<Cat, MoodId>>;
   memo: Partial<Record<Cat, string>>;
+  /** Times each of us had protein (migration 010). */
+  protein: Partial<Record<Cat, number>>;
   /** "🏃 3.0km" style summaries of the day's workouts, in order. */
   workouts: { cat: Cat; kind: string; exerciseId: string; distanceM: number | null; weightDg: number | null; reps: number | null }[];
 }
@@ -22,7 +24,7 @@ export async function momentsBetween(
   to: Day,
 ): Promise<Record<Day, MomentDay>> {
   const out: Record<Day, MomentDay> = {};
-  const at = (day: Day) => (out[day] ??= { mood: {}, memo: {}, workouts: [] });
+  const at = (day: Day) => (out[day] ??= { mood: {}, memo: {}, protein: {}, workouts: [] });
   const catOf = (id: string): Cat | null =>
     id === couple.yangcho?.id ? "yangcho" : id === couple.towee?.id ? "towee" : null;
 
@@ -42,6 +44,16 @@ export async function momentsBetween(
   for (const r of memos.rows) {
     const cat = catOf(r.person_id);
     if (cat) at(r.day).memo[cat] = r.body;
+  }
+
+  const protein = await client.query<{ person_id: string; day: string; servings: number }>(
+    `SELECT person_id, to_char(day, 'YYYY-MM-DD') AS day, servings FROM day_protein
+      WHERE day BETWEEN $1 AND $2 AND servings > 0`,
+    [from, to],
+  );
+  for (const r of protein.rows) {
+    const cat = catOf(r.person_id);
+    if (cat) at(r.day).protein[cat] = r.servings;
   }
 
   const workouts = await client.query<{

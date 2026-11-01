@@ -58,6 +58,7 @@ export default async function HomePage() {
       leaveMinute: d.leaveMinute,
       leftAt: d.leftAt ? seoulClock(d.leftAt) : null,
       memo: d.memo,
+      protein: d.protein,
     };
   });
 

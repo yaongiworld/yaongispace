@@ -15,9 +15,11 @@ export interface DayOf {
   leaveMinute: number | null;
   leftAt: Date | null;
   memo: string | null;
+  /** Times they had some protein (migration 010). */
+  protein: number;
 }
 
-const EMPTY: DayOf = { mood: null, leaveMinute: null, leftAt: null, memo: null };
+const EMPTY: DayOf = { mood: null, leaveMinute: null, leftAt: null, memo: null, protein: 0 };
 
 /** Both people's day, laid out by cat. */
 export async function dayFor(
@@ -41,6 +43,11 @@ export async function dayFor(
     [day, ids],
   );
 
+  const protein = await client.query<{ person_id: string; servings: number }>(
+    "SELECT person_id, servings FROM day_protein WHERE day = $1 AND person_id = ANY($2)",
+    [day, ids],
+  );
+
   const of = (personId: string | undefined): DayOf => {
     if (!personId) return { ...EMPTY };
     const o = offwork.rows.find((r) => r.person_id === personId);
@@ -49,6 +56,7 @@ export async function dayFor(
       leaveMinute: o?.leave_minute ?? null,
       leftAt: o?.left_at ?? null,
       memo: memos.rows.find((r) => r.person_id === personId)?.body ?? null,
+      protein: protein.rows.find((r) => r.person_id === personId)?.servings ?? 0,
     };
   };
 
@@ -119,4 +127,24 @@ export async function setMemo(personId: string, day: Day, body: string): Promise
         )
       : c.query("DELETE FROM day_memo WHERE person_id = $1 AND day = $2", [personId, day]),
   );
+}
+
+/** Most a day can count — a guard against a stuck finger, not a diet rule. */
+export const MAX_PROTEIN = 20;
+
+/**
+ * 🥚 +1 (or −1 to undo a mis-tap). Clamped to 0…20 in one statement, so two
+ * quick taps both land. Returns the new count.
+ */
+export async function addProtein(personId: string, day: Day, delta: 1 | -1): Promise<number> {
+  return asPerson(personId, async (c) => {
+    const { rows } = await c.query<{ servings: number }>(
+      `INSERT INTO day_protein (person_id, day, servings) VALUES ($1, $2, greatest(0, $3::int))
+       ON CONFLICT (person_id, day) DO UPDATE
+         SET servings = least($4::int, greatest(0, day_protein.servings + $3::int)), updated_at = now()
+       RETURNING servings`,
+      [personId, day, delta, MAX_PROTEIN],
+    );
+    return rows[0].servings;
+  });
 }

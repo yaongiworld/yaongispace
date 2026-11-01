@@ -295,3 +295,32 @@ describe("News, widened (충돌 6)", () => {
     expect(await newsAs(towee)).toEqual([]);
   });
 });
+
+describe("the protein counter (010)", () => {
+  test("one tap is +1, a mis-tap comes back off, and it never goes below 0 or above 20", async () => {
+    expect(await todayStore.addProtein(yangcho, DAY, 1)).toBe(1);
+    expect(await todayStore.addProtein(yangcho, DAY, 1)).toBe(2);
+    expect(await todayStore.addProtein(yangcho, DAY, -1)).toBe(1);
+    expect(await todayStore.addProtein(yangcho, DAY, -1)).toBe(0);
+    expect(await todayStore.addProtein(yangcho, DAY, -1)).toBe(0);
+    for (let i = 0; i < 25; i++) await todayStore.addProtein(towee, DAY, 1);
+    expect((await db.query("SELECT servings FROM day_protein WHERE person_id = $1", [towee])).rows).toEqual([{ servings: 20 }]);
+  });
+
+  test("both of us see both counts; nobody counts for the other", async () => {
+    await todayStore.addProtein(towee, DAY, 1);
+    const day = await asPersonApp(yangcho, async (c) => todayStore.dayFor(c, await couple.loadCouple(c, yangcho), DAY));
+    expect(day.towee.protein).toBe(1);
+    expect(day.yangcho.protein).toBe(0);
+    await expect(
+      asPerson(db, yangcho, () =>
+        db.query("INSERT INTO day_protein (person_id, day, servings) VALUES ($1, $2, 5)", [towee, DAY]),
+      ),
+    ).rejects.toThrow(/row-level security/);
+  });
+
+  test("is not News — no ping every time the other one eats an egg", async () => {
+    await todayStore.addProtein(yangcho, DAY, 1);
+    expect(await newsAs(towee)).toEqual([]);
+  });
+});

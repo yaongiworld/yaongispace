@@ -10,7 +10,7 @@ import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Wheel } from "../ui/Wheel";
 import { Celebrate } from "../ui/Celebrate";
-import { chooseLeaveTime, chooseMood, claimCat, leftWork, saveMemo, signOut, undoLeftWork } from "./actions";
+import { chooseLeaveTime, chooseMood, claimCat, countProtein, leftWork, saveMemo, signOut, undoLeftWork } from "./actions";
 
 export interface TodayCat {
   cat: Cat;
@@ -24,6 +24,8 @@ export interface TodayCat {
   leftAt: string | null;
   /** Today's one line, if any. */
   memo: string | null;
+  /** Times they had protein today. */
+  protein: number;
 }
 
 type Open = null | "mood" | "clock" | "record" | "memo" | "yaongi";
@@ -107,6 +109,18 @@ export function TodayView({
             hop={c.isMe ? hop : 0}
             onMood={c.isMe ? () => setOpen("mood") : undefined}
             onClock={c.isMe ? () => setOpen("clock") : undefined}
+            onProtein={
+              c.isMe
+                ? () => {
+                    const next = Math.min(20, mine.protein + 1);
+                    setCheer(`🥚 오늘 ${next}번`);
+                    startTransition(async () => {
+                      patchMine({ protein: next });
+                      await countProtein(1);
+                    });
+                  }
+                : undefined
+            }
           />
         ))}
       </section>
@@ -257,11 +271,13 @@ function CatCard({
   hop,
   onMood,
   onClock,
+  onProtein,
 }: {
   c: TodayCat;
   hop: number;
   onMood?: () => void;
   onClock?: () => void;
+  onProtein?: () => void;
 }) {
   const mood = moodOf(c.mood);
   const accent = ACCENT[c.cat];
@@ -289,6 +305,7 @@ function CatCard({
       </span>
 
       <OffworkChip c={c} onClick={onClock} />
+      <ProteinChip count={c.protein} name={c.name} onClick={onProtein} />
     </article>
   );
 }
@@ -366,6 +383,37 @@ function OffworkChip({ c, onClick }: { c: TodayCat; onClick?: () => void }) {
       style={{ ...style, boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
     >
       {text}
+    </button>
+  );
+}
+
+/**
+ * 🥚 — one tap each time you eat some protein (PO, 2026-11-01). Just a count:
+ * no grams, no foods. A mis-tap is undone with − on the day's Moments card.
+ */
+function ProteinChip({ count, name, onClick }: { count: number; name: string; onClick?: () => void }) {
+  const style: React.CSSProperties = {
+    fontFamily: "var(--font-display)",
+    background: count > 0 ? "color-mix(in srgb, var(--color-clay-apricot) 60%, white)" : "var(--color-clay-dawn)",
+    borderRadius: "var(--radius-clay-pill)",
+  };
+  if (!onClick) {
+    return (
+      <span className="flex min-h-11 items-center px-3 text-base text-clay-ink tabular-nums" style={style} aria-label={`${name} 단백질 ${count}번`}>
+        🥚 {count}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`단백질 먹었어요 (오늘 ${count}번). 한 번 더`}
+      className="press flex min-h-11 items-center gap-1 px-3 text-base text-clay-ink tabular-nums"
+      style={{ ...style, boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
+    >
+      🥚 {count}
+      <span className="text-xs text-clay-ink-soft">＋</span>
     </button>
   );
 }

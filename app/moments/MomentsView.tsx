@@ -12,7 +12,7 @@ import { formatKg, formatKm } from "@/lib/workout/measures";
 import { CAT_FACE_ID, ImageSlot } from "../ui/ImageSlot";
 import { Sheet } from "../ui/Sheet";
 import { Celebrate } from "../ui/Celebrate";
-import { saveMemo } from "../today/actions";
+import { countProtein, saveMemo } from "../today/actions";
 import { addAnniversary, removeAnniversary } from "./actions";
 
 export interface MomentEvent {
@@ -274,6 +274,13 @@ function DayCard({
   const [adding, setAdding] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [protein, setProtein] = useState(data?.protein[myCat] ?? 0);
+  const bumpProtein = (delta: 1 | -1) => {
+    setProtein((n) => Math.max(0, Math.min(20, n + delta)));
+    startTransition(async () => {
+      setProtein(await countProtein(delta, day));
+    });
+  };
 
   return (
     <div className="flex flex-col gap-4 pb-2">
@@ -313,6 +320,42 @@ function DayCard({
           );
         })}
       </ul>
+
+      {/* 🥚 — both counts; yours can be fixed here (a mis-tap on Today). */}
+      <section aria-label="단백질" className="flex items-center gap-3 px-1">
+        <span className="text-xs font-semibold text-clay-ink-soft">🥚 단백질</span>
+        {CATS.filter((c) => c !== myCat).map((c) => (
+          <span key={c} className="text-sm text-clay-ink tabular-nums">
+            {names[c]} {data?.protein[c] ?? 0}
+          </span>
+        ))}
+        <span className="flex-1" />
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={pending || protein === 0}
+            onClick={() => bumpProtein(-1)}
+            aria-label="내 단백질 하나 빼기"
+            className="press grid h-11 w-11 place-items-center rounded-full text-lg text-clay-ink-soft disabled:opacity-30"
+            style={{ boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
+          >
+            −
+          </button>
+          <span className="min-w-[3.5rem] text-center text-sm text-clay-ink tabular-nums" aria-live="polite">
+            {names[myCat]} {protein}
+          </span>
+          <button
+            type="button"
+            disabled={pending || protein >= 20}
+            onClick={() => bumpProtein(1)}
+            aria-label="내 단백질 하나 더하기"
+            className="press grid h-11 w-11 place-items-center rounded-full text-lg text-clay-ink disabled:opacity-30"
+            style={{ boxShadow: "inset 0 0 0 1.5px var(--color-clay-apricot)" }}
+          >
+            ＋
+          </button>
+        </span>
+      </section>
 
       {data?.workouts.length ? (
         <section aria-label="운동" className="flex flex-col gap-1.5">
