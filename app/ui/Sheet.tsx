@@ -45,7 +45,11 @@ export function Sheet({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
-      previous?.focus?.();
+      // Hand focus back only if nobody else has taken it: when one sheet
+      // closes *into* another (오늘 기록하기 → 한 줄 메모), the next sheet's
+      // input already has focus, and taking it back would drop the keyboard.
+      const now = document.activeElement;
+      if (!now || now === document.body) previous?.focus?.();
     };
   }, [open, onClose, mounted]);
 
